@@ -59,6 +59,26 @@ Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInst
     throw std::invalid_argument("Unsupported MetaSolution type in FIFOPolicy::extract_sequence.");
 }
 
+int FIFOPolicy::extract_sub_metasolution_index(const MetaSolution& metasol, DataInstance& scenario) const {
+    
+    //assert list solution
+    const ListMetaSolutionBase* listMetaSolution = dynamic_cast<const ListMetaSolutionBase*>(&metasol);
+    if (!listMetaSolution) {
+        throw std::runtime_error("MetaSolution must be of type ListMetaSolutionBase.");
+    }
+    Sequence minSeq = extract_sequence(*listMetaSolution->get_meta_solutions().front(), scenario); // Initialize with the first sequence
+    int minIndex = 0;
+
+    for (int i=0 ; i < listMetaSolution->get_meta_solutions().size(); i++) {
+        Sequence seq = extract_sequence(*listMetaSolution->get_meta_solutions()[i], scenario);
+        if (seq.isLexicographicallySmaller(minSeq, scenario)) {
+            minSeq = seq; 
+            minIndex = i; 
+        }
+    }
+    return minIndex; // Return the valid Sequence    
+}
+
 
 Schedule FIFOPolicy::transform_to_schedule(const Sequence& sequence, const DataInstance& scenario) const {
         const std::vector<int>& tasks = sequence.get_tasks(); // Get tasks in sequence order

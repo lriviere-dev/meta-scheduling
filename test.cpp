@@ -6,12 +6,14 @@
 #include "Sequence.h"
 #include "Schedule.h"
 #include "Algorithms.h"
+#include "BestOfAlgorithm.h"
 
 
 int main() {
     std::cout << "==== INSTANCE SCENARIO TEST ===" << std::endl;
     //Loading up instance/scenario
-    DataInstance instance("instances/test.data");
+    //DataInstance instance("instances/test.data");
+    DataInstance instance("instances/test2.data");
     DataInstance single_scenario(instance,0);
     single_scenario.print();
 
@@ -20,14 +22,14 @@ int main() {
     std::cout << std::endl << std::endl;
 
     std::cout << "==== JSEQ TEST ===" << std::endl;
-    // Example group sequence
-    std::vector<int> taskseq = {
-            2,0,1   
-        };
+    std::vector<int> taskseq(instance.N);
+    for (int i = 0; i < instance.N; ++i) {
+        taskseq[i] = i; // Example: Filling with sequential integers
+    }
+
     Sequence taskseqbis = Sequence(taskseq);
     // Test GroupMetaSolution
     SequenceMetaSolution myseq(taskseqbis);
-    //SequenceMetaSolution myseq(taskseq); //both versions should work
     std::cout << "MetaSolution (JSEQ) :";
     myseq.print();
     std::cout << std::endl;
@@ -40,11 +42,16 @@ int main() {
 
 
     std::cout << "==== GROUP SEQUENCE TEST ===" << std::endl;
-        // Example group sequence
-    std::vector<std::vector<int>> taskGroups = {
-            {1},    // Group 1:
-            {0,2},       // Group 2:
-        };
+        // Example group sequence with half the tasks in the first group, half in the second one
+    std::vector<std::vector<int>> taskGroups(2);
+    for (int i = 0; i < instance.N; ++i) {
+        if (i<instance.N/2){
+            taskGroups[0].push_back(i); 
+        }
+        else{
+            taskGroups[1].push_back(i); 
+        }
+    }
 
     // Test GroupMetaSolution
     GroupMetaSolution mygroup(taskGroups);
@@ -60,19 +67,31 @@ int main() {
 
     std::cout << "==== LIST OF X TEST ===" << std::endl;
     // another sequence
-    std::vector<int> taskseq2 = {
-            1,0,2   
-        };
+    std::vector<int> taskseq2(instance.N);
+    for (int i = 0; i < instance.N; ++i) {
+        taskseq2[i] = instance.N-i; // Example: Filling with sequential integers
+    }
     Sequence taskseqbis2 = Sequence(taskseq2);
     std::vector<SequenceMetaSolution> vectorseq = {taskseqbis, taskseqbis2};
 
     // another group sequence
-    std::vector<std::vector<int>> taskGroups2 = {
-            {0,1},    // Group 1:
-            {2},       // Group 2:
-        };
-    GroupMetaSolution mygroup2(taskGroups);
-    std::vector<GroupMetaSolution> vectorgroup = {taskGroups, taskGroups2};
+    std::vector<std::vector<int>> taskGroups2(2);
+    for (int i = 0; i < instance.N; ++i) {
+        if (i % 2 == 0){
+            taskGroups2[0].push_back(i); 
+        }
+        else{
+            taskGroups2[1].push_back(i); 
+        }
+    }
+    GroupMetaSolution mygroup2(taskGroups2);
+
+    std::vector<std::vector<int>> taskGroups3(1);
+    for (int i = 0; i < instance.N; ++i) {
+        taskGroups3[0].push_back(i); //fully permutable gruop
+    }
+    GroupMetaSolution mygroup3(taskGroups3);
+    std::vector<GroupMetaSolution> vectorgroup = {taskGroups, taskGroups2, taskGroups3};
 
     // Test seq set sol
     ListMetaSolution<SequenceMetaSolution> listseq(vectorseq);
@@ -130,9 +149,46 @@ int main() {
     jseq_optim->print();
     std::cout << std::endl;
 
-    //evaluate 
     overall_score = fifo.evaluate_meta(*jseq_optim, instance);
     std::cout << "Score after optimisation :" << overall_score << std::endl;
 
+    std::cout << "==== ESSWEIN WARM-SOLVER TEST ===" << std::endl;
+
+    EssweinAlgorithm EWSolver;
+    EWSolver.setPolicy(&fifo);
+    EWSolver.set_initial_solution(*jseq_optim);
+    MetaSolution* ew_sol_output = EWSolver.solve(instance);
+
+    std::cout << "Solution reached:"; 
+    ew_sol_output->print();
+    std::cout << std::endl;
+
+    overall_score = fifo.evaluate_meta(*ew_sol_output, instance);
+    std::cout << "Score after optimisation :" << overall_score << std::endl;
+
+    std::cout << "==== BEST-OF TEST ===" << std::endl;
+
+    BestOfAlgorithm<SequenceMetaSolution> bestof;
+    bestof.setPolicy(&fifo);
+    bestof.set_initial_solution(listseq);
+    std::cout<<"initial_list : ";
+    listseq.print();
+    std::cout<< "=>" << fifo.evaluate_meta(listseq, instance) <<"\n";
+    MetaSolution* bestof_output = bestof.solve(instance);
+    std::cout<<"bestof output : ";
+    bestof_output->print();
+
+    BestOfAlgorithm<GroupMetaSolution> bestof2;
+    bestof2.setPolicy(&fifo);
+    bestof2.set_initial_solution(listgroup);
+    std::cout<<"\n\ninitial_list : ";
+    listgroup.print();
+    std::cout<< "=>" << fifo.evaluate_meta(listgroup, instance) <<"\n";
+    bestof_output = bestof2.solve(instance);
+    std::cout<<"bestof output : ";  
+    bestof_output->print();
+
+
+    std::cout<<"\n\nTEST END\n";  
     return 0;
 }

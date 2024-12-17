@@ -39,6 +39,39 @@ public:
         }
     }
 
+    GroupMetaSolution* merge_groups(int group_index) const {
+
+        // Create a copy of the current task groups
+        std::vector<std::vector<int>> merged_groups = taskGroups;
+
+        // Merge the selected group with the next group
+        merged_groups[group_index].insert(
+            merged_groups[group_index].end(),
+            merged_groups[group_index + 1].begin(),
+            merged_groups[group_index + 1].end()
+        );
+
+        // Remove the next group as it's now merged
+        merged_groups.erase(merged_groups.begin() + group_index + 1);
+
+        // Return a new GroupMetaSolution with the merged groups
+        return (new GroupMetaSolution(merged_groups));    
+        }
+
+    const int nb_groups() const {
+        return taskGroups.size();
+    }
+
+    const int largest_group_size() const {
+        int max_size=0;
+        for (const auto& group : this->get_task_groups()){
+            if (group.size()>max_size){
+                max_size = group.size();
+            }
+        }
+        return max_size;
+    }
+
     // Method to get the sequence of task groups (sets of tasks) (private)
     const std::vector<std::vector<int>>& get_task_groups() const {
         return taskGroups;
@@ -58,6 +91,16 @@ public:
     SequenceMetaSolution(const std::vector<int>& taskSequence) //alternative definition of a sequence using raw vector (not recommended)
         : taskSequence(Sequence(taskSequence)) {}
 
+    GroupMetaSolution* to_gseq(){
+        std::vector<int> raw_seq = this->get_sequence().get_tasks();
+        std::vector<std::vector<int>> vectorgroup(raw_seq.size());
+
+        for (int i = 0; i < raw_seq.size(); i++) {
+            vectorgroup[i] = {raw_seq[i]};  // Create a single task group directly
+        }
+
+        return new GroupMetaSolution(vectorgroup);
+    }
     void print() const override{
         taskSequence.print();
     }

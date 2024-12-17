@@ -1,3 +1,7 @@
+#ifndef ALGO_H
+#define ALGO_H
+
+
 #include "Policy.h"
 #include "MetaSolutions.h"
 #include "Instance.h"
@@ -20,6 +24,19 @@ public:
 
 protected:
     Policy* policy; // Reference to a Policy object for evaluating solutions
+};
+
+//subclass of algorithm require a starting solution
+class SecondStageAlgorithm : public Algorithm{
+public:
+    virtual ~SecondStageAlgorithm() {}
+
+    // Pure virtual function to solve a problem instance
+    void set_initial_solution(MetaSolution& initial_solution){
+        this->initial_solution = &initial_solution;
+    };
+
+    MetaSolution* initial_solution;
 };
 
 //specific Algorithms
@@ -145,3 +162,79 @@ public:
     return new SequenceMetaSolution(final_solution); //return pointer to best reached meta solution (JSEQ)
     }
 };
+
+
+class EssweinAlgorithm : public SecondStageAlgorithm {
+public:
+    EssweinAlgorithm() {
+        //timeLimitSeconds=60*60; //Time limit should never be reached but for fairness it should be there anyways.
+    }
+
+
+    //there is probably a memory leak in there. But at least I'm not deleting things I want to keep.
+    MetaSolution* solve(const DataInstance& instance) override {
+        // Ensure the poicy is set
+        if (!policy) {
+            throw std::runtime_error("Policy must be set before running the algorithm.");
+        }
+        // Ensure the initial sol is set
+        if (!initial_solution) {
+            throw std::runtime_error("Initial solution must be set before running the algorithm.");
+        }
+        GroupMetaSolution* currentSolution = nullptr;
+
+        // Initialize the meta solution as a GroupMetaSolution based on initial JSEQ solution
+        SequenceMetaSolution* sequenceSolution = dynamic_cast<SequenceMetaSolution*>(initial_solution);
+
+        if (sequenceSolution) {
+            // If the cast is successful, call to_gseq
+            currentSolution = sequenceSolution->to_gseq();
+        } else {
+            // Handle the case where the cast fails (optional)
+            throw std::runtime_error("Initial solution is not of type SequenceMetaSolution!");
+        }
+
+        // Main loop: merge groups while improvement exists
+        bool improvement = true;
+        while (improvement) { //&& !timeLimitExceeded(startTime)
+            improvement = false;
+            int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
+            int bestCandidatelargestGroupSize = currentSolution->largest_group_size();
+            int bestCandidateMergeId =-1;
+
+            for (int i = 0; i < currentSolution->nb_groups()-1; ++i){
+                GroupMetaSolution* candidateSolution = currentSolution->merge_groups(i);
+                int CandidateScore = policy->evaluate_meta(*candidateSolution, instance); // Note that Esswein's algorithm conserves precedence constraints compliance.
+                int CandidatelargestGroupSize = candidateSolution->largest_group_size();
+                //std::cout <<"considering :";
+                //candidateSolution->print();
+                //std::cout <<"\n";
+                
+                if ((CandidateScore<bestCandidateScore) || 
+                    ((CandidateScore==bestCandidateScore) && (CandidatelargestGroupSize < bestCandidatelargestGroupSize))){
+                    std::cout << CandidateScore << "*:";
+                    candidateSolution->print();
+                    std::cout << "\n\n";
+                    bestCandidateMergeId = i;
+                    bestCandidateScore = CandidateScore;
+                    bestCandidatelargestGroupSize = CandidatelargestGroupSize;
+                    improvement=true;
+                }
+                delete candidateSolution;
+            }
+            if (improvement && bestCandidateMergeId != -1) {
+                GroupMetaSolution* oldSolution = currentSolution; // Save the old pointer
+                currentSolution = currentSolution->merge_groups(bestCandidateMergeId); // Get the new solution
+                delete oldSolution; // Delete the old solution            
+            }
+        }
+
+
+        return currentSolution; // Return the final solution
+    }
+
+private:
+
+};
+
+#endif //ALGO_H

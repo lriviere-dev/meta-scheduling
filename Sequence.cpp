@@ -8,7 +8,7 @@ Sequence::Sequence(const std::vector<int>& tasks) : tasks(tasks) {}
 void Sequence::print() const {
     for (int i = 0; i<tasks.size(); i++) {
         if (i != 0){  // this works because tasks should be unique in a sequence.
-            std::cout << "*";
+            std::cout << "-";
         }
         std::cout << tasks[i];
     }
