@@ -1,3 +1,6 @@
+#ifndef BOALGO_H
+#define BOALGO_H
+
 #include "MetaSolutions.h"
 #include "ListMetaSolutions.h"
 #include "Algorithms.h"
@@ -52,7 +55,7 @@ public:
             currentSolution->print();
             std::cout << "=>: " << newScore<<"\n";
 
-            if (newScore <= bestScore) { // we prefer a smaller output.
+            if (newScore <= bestScore) { // we prefer a smaller output. !Doesn't mean there is no redundancy at all
                 bestScore = newScore;
                 bestSolution = std::make_unique<ListMetaSolution<T>>(*currentSolution);
             }
@@ -62,3 +65,5 @@ public:
         return bestSolution.release();
     }
 };
+
+#endif //BOALGO_H

@@ -6,6 +6,7 @@
 #include "ListMetaSolutions.h" 
 #include <algorithm>
 
+//extracts a sequence from a metasolution for a given scenario.
 Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInstance& scenario) const {
     // Try to cast to GroupMetaSolution
     if (const auto* groupMeta = dynamic_cast<const GroupMetaSolution*>(&metaSolution)) {
@@ -33,7 +34,7 @@ Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInst
         return Sequence((*SeqMeta).get_sequence().get_tasks());
     }
         // Handling all ListMetaSolution types via their underlying metasolution type (recursive)
-        else if (const auto* listMeta = dynamic_cast<const ListMetaSolutionBase*>(&metaSolution)) {
+    else if (const auto* listMeta = dynamic_cast<const ListMetaSolutionBase*>(&metaSolution)) {
         Sequence minSeq = extract_sequence(*listMeta->get_meta_solutions().front(), scenario); // Initialize with the first sequence
 
         for (const auto& meta_sol : listMeta->get_meta_solutions()) {

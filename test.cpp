@@ -6,6 +6,7 @@
 #include "Sequence.h"
 #include "Schedule.h"
 #include "Algorithms.h"
+#include "StreamlinedAlgorithm.h"
 #include "BestOfAlgorithm.h"
 
 
@@ -13,7 +14,7 @@ int main() {
     std::cout << "==== INSTANCE SCENARIO TEST ===" << std::endl;
     //Loading up instance/scenario
     //DataInstance instance("instances/test.data");
-    DataInstance instance("instances/test2.data");
+    DataInstance instance("instances/test.data");
     DataInstance single_scenario(instance,0);
     single_scenario.print();
 
@@ -188,6 +189,15 @@ int main() {
     std::cout<<"bestof output : ";  
     bestof_output->print();
 
+
+    std::cout << "==== SL ALGO TEST ===" << std::endl;
+
+    StreamlinedAlgorithm slalgo;
+    slalgo.setPolicy(&fifo);
+    MetaSolution* slalgo_output = slalgo.solve(instance);
+    std::cout<<"bestof output : ";
+    slalgo_output->print();
+    std::cout<<"Score : " << fifo.evaluate_meta(*slalgo_output, instance) << std::endl; 
 
     std::cout<<"\n\nTEST END\n";  
     return 0;
