@@ -9,7 +9,7 @@
 Schedule::Schedule(std::vector<int> startTimesArray) : startTimes(startTimesArray) {}
 
 // Maybe there should be an input for evaluation type sigma gamma. 
-// FOr now implemented type is max lmax.
+// FOr now implemented type is max sumci.
 int Schedule::evaluate(DataInstance& instance) {
     // A schedule is evaluated for an instance with a single scenario
     // feasibility (precedences, overlap, release dates) is assumed
@@ -22,15 +22,15 @@ int Schedule::evaluate(DataInstance& instance) {
         throw std::invalid_argument("The number of start times should equal the number of tasks (N)");
     }
 
-    // for each task, compare end time to due date, keep max lateness. 
-    int max_lateness = 0;
+    // for each task, add up end time 
+    int sumci = 0;
     for (int i = 0; i < instance.N; ++i) {
-        int lateness = startTimes[i]+instance.durations[i]-instance.dueDates[i];
-        if (lateness>max_lateness) {
-            max_lateness = lateness;
-        }
+        //int lateness = startTimes[i]+instance.durations[i]-instance.dueDates[i];
+        int end_time = startTimes[i]+instance.durations[i];
+        sumci += end_time;
+        
     }
-    return max_lateness;
+    return sumci;
 }
 
 void Schedule::print() {

@@ -30,7 +30,7 @@ public:
         // assume aggregator : max
 
         // Iterate over all scenarios in the DataInstance
-        int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values for lateness. sumci can't be negative.
+        int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
         for (int i=0; i<instance.S; i++) { 
             DataInstance scenario = instance.single_instance(i);
             Sequence seq = this->extract_sequence(metasol, scenario);
@@ -38,9 +38,6 @@ public:
 
             // Evaluate the schedule for the current scenario
             int cost = schedule.evaluate(scenario);
-            //std::cout << "s" << i << ":";
-            //seq.print();
-            //std::cout <<":" <<cost<<std::endl;
             // Update the maximum cost
             if (cost > maxCost) {
                 maxCost = cost;
@@ -52,14 +49,15 @@ public:
             
     int find_limiting_element(const MetaSolution& metasol, const DataInstance& instance) const{ //finds the limiting element of a listMetaSOlution
         // same for all policies. Similar to evaluate_meata but keep the scenario culprit.
-        // assert aggregator : max, assert metasolution type is listmeta.
+        // assume aggregator : max 
 
+        //assert metasolution type is listmeta.
         if (!dynamic_cast<const ListMetaSolutionBase*>(&metasol)) {
             throw std::runtime_error("MetaSolution must be of type ListMetaSolutionBase.");
         } 
 
         // Iterate over all scenarios in the DataInstance
-        int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values for lateness. sumci can't be negative.
+        int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
         int limiting_index = 0; 
         for (int i=0; i<instance.S; i++) { 
             DataInstance scenario = instance.single_instance(i);

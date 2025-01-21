@@ -105,15 +105,16 @@ Schedule FIFOPolicy::transform_to_schedule(const Sequence& sequence, const DataI
 void FIFOPolicy::define_objective(IloEnv env, IloModel& model, 
                         IloIntervalVarArray2& jobs, const DataInstance& instance, 
                         IloIntExprArray& scenario_scores,  IloIntVar& aggregated_objective) const {
-    //objective here is max lateness. Could be other.
+    //objective here is max sumci. Could be other.
     int nbScenarios = instance.S;
     int nbJobs = instance.N;
-    IloIntExprArray lateness(env, nbJobs);
+    IloIntExprArray completions(env, nbJobs);
     for (int s = 0; s < nbScenarios; s++) {
         for (int i = 0; i < nbJobs; i++) {
-            lateness[i] = IloMax(0, IloEndOf(jobs[s][i]) - instance.dueDates[i]);
+            completions[i] = IloEndOf(jobs[s][i]);
         }
-        scenario_scores[s] = IloMax(lateness);
+        scenario_scores[s] = IloMax(completions);
+
     }
 
     // Aggregate objectives across scenarios

@@ -114,7 +114,7 @@ private:
 
 
 // The set of sequences sequence (SSEQ) 
-//WARNING : FUNCTIONALLY IDENTICAL AS List of JSEQ !! Eventually to remove !
+//WARNING : FUNCTIONALLY IDENTICAL AS List of JSEQ !! Eventually to remove ! TODO !
 class SequenceSetMetaSolution : public MetaSolution {
 public:
 
