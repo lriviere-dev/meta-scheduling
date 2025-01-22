@@ -213,9 +213,9 @@ public:
                 
                 if ((CandidateScore<bestCandidateScore) || 
                     ((CandidateScore==bestCandidateScore) && (CandidatelargestGroupSize < bestCandidatelargestGroupSize))){
-                    std::cout << CandidateScore << "*:";
+                    /*std::cout << CandidateScore << "*:";
                     candidateSolution->print();
-                    std::cout << "\n\n";
+                    std::cout << "\n\n";*/
                     bestCandidateMergeId = i;
                     bestCandidateScore = CandidateScore;
                     bestCandidatelargestGroupSize = CandidatelargestGroupSize;
@@ -265,6 +265,7 @@ public:
         bool improvement = true;
         while (improvement) { //&& !timeLimitExceeded(startTime)
             accu.push_back(currentSolution);// save current solution
+
             improvement = false;
             int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
             int bestCandidatelargestGroupSize = currentSolution->largest_group_size();
@@ -280,9 +281,9 @@ public:
                 
                 if ((CandidateScore<bestCandidateScore) || 
                     ((CandidateScore==bestCandidateScore) && (CandidatelargestGroupSize < bestCandidatelargestGroupSize))){
-                    std::cout << CandidateScore << "*:";
+                    /*std::cout << CandidateScore << "*:";
                     candidateSolution->print();
-                    std::cout << "\n\n";
+                    std::cout << "\n\n";*/
                     bestCandidateMergeId = i;
                     bestCandidateScore = CandidateScore;
                     bestCandidatelargestGroupSize = CandidatelargestGroupSize;
@@ -291,12 +292,12 @@ public:
                 delete candidateSolution;
             }
             if (improvement && bestCandidateMergeId != -1) {
-                GroupMetaSolution* oldSolution = currentSolution; // Save the old pointer
+                //GroupMetaSolution* oldSolution = currentSolution; // Save the old pointer ((useless here))
                 currentSolution = currentSolution->merge_groups(bestCandidateMergeId); // Get the new solution
-                delete oldSolution; // Delete the old solution            
+                //delete oldSolution; // DO NOT Delete the old solution in this version, we keep them         
             }
-        }
 
+        }
 
         return accu; // Return the steps taken including start (sequence-like) and the endpoint (output of solve)
     }

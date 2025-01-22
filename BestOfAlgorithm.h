@@ -54,9 +54,9 @@ public:
             currentSolution = std::make_unique<ListMetaSolution<T>>(std::move(*updatedSolution));
             // Evaluate new score
             int newScore = policy->evaluate_meta(*currentSolution, instance);
-            std::cout << "\nCURRENT SOL :";
+            /*std::cout << "\nCURRENT SOL :";
             currentSolution->print();
-            std::cout << "=>: " << newScore<<"\n";
+            std::cout << "=>: " << newScore<<"\n";*/
 
             if (newScore <= bestScore) { // we prefer a smaller output. !Doesn't mean there is no redundancy at all
                 bestScore = newScore;

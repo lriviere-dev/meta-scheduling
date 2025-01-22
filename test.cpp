@@ -187,7 +187,7 @@ int main() {
     bestof_output->print();
 
 
-    std::cout << "==== SL ALGO TEST ===" << std::endl;
+    std::cout << std:: endl << "==== SL ALGO TEST ===" << std::endl;
 
     StreamlinedAlgorithm slalgo(&fifo);
     MetaSolution* slalgo_output = slalgo.solve(instance);
