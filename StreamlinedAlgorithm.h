@@ -8,11 +8,16 @@
 #include "BestOfAlgorithm.h"
 #include <vector>
 #include <iostream>
+#include <typeinfo>
 
 //Streamlined algorithm 
 //outputs list of groupmetasolutions.
 class StreamlinedAlgorithm : public Algorithm {
 public:
+
+    StreamlinedAlgorithm(Policy* policy) {
+        this->policy = policy; // Use the policy provided during initialization
+    }
 
     MetaSolution* solve(const DataInstance& instance) override {
         JSEQSolver JseqSolver(policy);
@@ -23,7 +28,7 @@ public:
         MetaSolution* jseq_solution = JseqSolver.solve(instance); // First output : THE JSEQ SOLUTION
 
         //Esswein on the JSEQ solution
-        EWSolver.set_initial_solution(jseq_solution);
+        EWSolver.set_initial_solution(*jseq_solution);
         MetaSolution* gseq_solution = EWSolver.solve(instance); // Second output : THE GSEQ SOLUTION derived from the JSEQ one
 
         //Diversify JSEQ solution
@@ -41,7 +46,7 @@ public:
         std::vector<GroupMetaSolution> AllSolutionsGroup;
         for (size_t i=0; i<diversifiedSeq.size();i++){
             EWSolver.set_initial_solution(diversifiedSeq[i]);
-            std::vector<MetaSolution*> ewsols = EWsolver.solve_savesteps (instance);
+            std::vector<MetaSolution*> ewsols = EWSolver.solve_savesteps (instance);
             for (size_t j = 0; j<ewsols.size(); j++)
             {  
                 AllSolutionsGroup.push_back(*(dynamic_cast<GroupMetaSolution*>(ewsols[j])));
@@ -54,7 +59,15 @@ public:
         bestof_gseq.set_initial_solution(listgroupmetasol);
         MetaSolution* sgseq_solution = bestof_gseq.solve(instance); // Fourth output : THE SGSEQ SOLUTION derived from the set of GSEQ solutions
 
-        return sgseq_solution; //todo : return all solutions 1,2,3,4 or none
+        // Print the 4 solutions reached
+        std::vector<MetaSolution*> outputs = {jseq_solution, gseq_solution, sjseq_solution, sgseq_solution};
+        for (size_t i = 0; i<outputs.size(); i++){
+            std::cout << "Output " << i << ":" << typeid(outputs[i]).name() << std::endl;
+            std::cout << "Solution " << ":" ;
+            std::cout << std::endl << "Score " << ":" << policy->evaluate_meta(*outputs[i], instance) << std::endl<< std::endl;            
+        }
+
+        return sgseq_solution; //as an algorithm, only returns one output, that is supposed to be the best. but any of the fourth output could be relevant.
     }
 
 private :
@@ -62,18 +75,18 @@ private :
     //Assumes the input list contains high quality solutions
     //then use random diversification steps with increasing strenghth (parameterized)
     //outputs a pool of admissible JSEQ solutions (precedences are checked)
-    // Note : FIFO and other local decisions heuristic can handle solutions containing invalid solutions, but I'm not sure my code does.
+    // Note : FIFO and other local decisions heuristic can handle solutions containing invalid solutions in theory, but my code might need tweaks to do so.
    std::vector<SequenceMetaSolution> diversify_step (const std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance) {
         int steps = 1; //TODO : could be a parameter.
         int neighborhood_size = 1; //TODO : could be a parameter.
         std::vector<SequenceMetaSolution> output_solutions;
 
-        for (size_t step = 0; step < steps; step++) //repeat process depending on diversification strenghth (this will create duplicate solutions as inverse step can be taken. Could be done smarter)
+        for (int step = 0; step < steps; step++) //repeat process depending on diversification strenghth (this will create duplicate solutions as inverse step can be taken. Could be done smarter)
         {
-            for (size_t i = 0; i < output_solutions; i++)
+            for (size_t i = 0; i < output_solutions.size(); i++)
             {
-                SequenceMetaSolution curent = input_solutions[i];
-                std::vector<SequenceMetaSolution> neigbors = current.gen_neighbors(neighborhood_size, instance); //instance is passed down to check precedence constraints
+                SequenceMetaSolution current = input_solutions[i];
+                std::vector<SequenceMetaSolution> neighbors = current.gen_neighbors(neighborhood_size, instance); //instance is passed down to check precedence constraints
                 output_solutions.insert(output_solutions.end(), neighbors.begin(), neighbors.end());
             }
         }

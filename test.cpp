@@ -168,8 +168,7 @@ int main() {
 
     std::cout << "==== BEST-OF TEST ===" << std::endl;
 
-    BestOfAlgorithm<SequenceMetaSolution> bestof;
-    bestof.setPolicy(&fifo);
+    BestOfAlgorithm<SequenceMetaSolution> bestof(&fifo);
     bestof.set_initial_solution(listseq);
     std::cout<<"initial_list : ";
     listseq.print();
@@ -178,8 +177,7 @@ int main() {
     std::cout<<"bestof output : ";
     bestof_output->print();
 
-    BestOfAlgorithm<GroupMetaSolution> bestof2;
-    bestof2.setPolicy(&fifo);
+    BestOfAlgorithm<GroupMetaSolution> bestof2(&fifo);
     bestof2.set_initial_solution(listgroup);
     std::cout<<"\n\ninitial_list : ";
     listgroup.print();
@@ -191,8 +189,7 @@ int main() {
 
     std::cout << "==== SL ALGO TEST ===" << std::endl;
 
-    StreamlinedAlgorithm slalgo;
-    slalgo.setPolicy(&fifo);
+    StreamlinedAlgorithm slalgo(&fifo);
     MetaSolution* slalgo_output = slalgo.solve(instance);
     std::cout<<"bestof output : ";
     slalgo_output->print();

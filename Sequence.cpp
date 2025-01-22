@@ -6,7 +6,7 @@ Sequence::Sequence(const std::vector<int>& tasks) : tasks(tasks) {}
 
 // Print function implementation
 void Sequence::print() const {
-    for (int i = 0; i<tasks.size(); i++) {
+    for (size_t i = 0; i<tasks.size(); i++) {
         if (i != 0){  // this works because tasks should be unique in a sequence.
             std::cout << "-";
         }

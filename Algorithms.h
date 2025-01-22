@@ -236,7 +236,7 @@ public:
 
     //WARNING : this is a copy of the solve function, modified to return intermediate solutions aswell.
     //there may be a more update-friendly way to do this.
-    std::vector<MetaSolution*> solve_savesteps(const DataInstance& instance) override {
+    std::vector<MetaSolution*> solve_savesteps(const DataInstance& instance) {
         // Ensure the poicy is set
         if (!policy) {
             throw std::runtime_error("Policy must be set before running the algorithm.");

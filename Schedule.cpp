@@ -35,7 +35,7 @@ int Schedule::evaluate(DataInstance& instance) {
 
 void Schedule::print() {
     std::cout << "Schedule:" << std::endl;
-    for (int i = 0; i < startTimes.size(); ++i) {
+    for (size_t i = 0; i < startTimes.size(); ++i) {
         std::cout << "Task " << i << " : " << startTimes[i] << std::endl;
     }
 }

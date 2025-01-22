@@ -69,7 +69,7 @@ int FIFOPolicy::extract_sub_metasolution_index(const MetaSolution& metasol, Data
     Sequence minSeq = extract_sequence(*listMetaSolution->get_meta_solutions().front(), scenario); // Initialize with the first sequence
     int minIndex = 0;
 
-    for (int i=0 ; i < listMetaSolution->get_meta_solutions().size(); i++) {
+    for (size_t i=0 ; i < listMetaSolution->get_meta_solutions().size(); i++) {
         Sequence seq = extract_sequence(*listMetaSolution->get_meta_solutions()[i], scenario);
         if (seq.isLexicographicallySmaller(minSeq, scenario)) {
             minSeq = seq; 
