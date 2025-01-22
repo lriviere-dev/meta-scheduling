@@ -20,6 +20,8 @@ public:
 
     bool isLexicographicallySmaller(const Sequence& other, const DataInstance& scenario) const;
 
+    std::vector<Sequence> neighbours(int neighborhood_size);
+
 private:
     std::vector<int> tasks; // Stores the sequence of tasks
 };

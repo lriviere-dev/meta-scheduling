@@ -34,7 +34,8 @@ bool Sequence::check_precedence_constraints(const DataInstance& instance) const 
     return true; // All constraints are respected
 }
 
-//compares two sequences to find the preffered one by FIFO in a given scenario
+//compares two sequences to find the preffered one by FIFO in a given scenario 
+//TODO : Warning: should depend on policy ! (the theory here needs to be layed out)
 bool Sequence::isLexicographicallySmaller(const Sequence& other, const DataInstance& scenario) const {
     const auto& releaseDates = scenario.releaseDates[0]; // Assuming single-machine case
 
@@ -57,6 +58,34 @@ bool Sequence::isLexicographicallySmaller(const Sequence& other, const DataInsta
     // At this point, sequences should be equal. So not strictly smaller
     return false;
 }
+
+
+ std::vector<Sequence> Sequence::neighbours(int neighborhood_size){
+    //assert valid neighborhood size input.
+    // The 3 neighborhoods successively dominate eachothers
+    // 1 : adjacent swaps (size N)
+    // 2 : inserts (size N^2)
+    // 3 : cut and insert (I think N^3) TODO
+
+    std::vector<Sequence> output;
+    std::vector<int> tasks = this->get_tasks();
+
+    if (neighborhood_size == 1){ // swaps
+        for (size_t i = 0; i < tasks.size()-1; i++)
+        {
+            std::vector<int> swaped = tasks; 
+            std::swap(swaped[i], swaped[i + 1]);
+            output.push_back(Sequence(swaped));
+        }
+     
+    }
+    else {
+        throw std::runtime_error("Neighborhood_size must be 1 (TODO : implement more sizes)");
+        throw std::runtime_error("Neighborhood_size must be 1, 2 or 3.");
+    }
+
+    return output;
+ }
 
 // Accessor implementation
 const std::vector<int>& Sequence::get_tasks() const {

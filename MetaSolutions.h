@@ -101,6 +101,18 @@ public:
 
         return new GroupMetaSolution(vectorgroup);
     }
+    std::vector<SequenceMetaSolution> gen_neighbors(int neighborhood_size, const DataInstance& instance = nullptr){//generates list of nighboring JSEQ solutions (defers to sequence neighborhood)
+        std::vector<SequenceMetaSolution> output;
+        std::vector<Sequence> neighboring_sequences = taskSequence.neighbours(neighborhood_size);
+        for (size_t i = 0; i < neighboring_sequences.size(); i++)
+        {
+            //if an instance is provided, remove invalid precedence-wise sequences
+            if (instance && neighboring_sequences[i].check_precedence_constraints(instance)){
+                output.push_back(SequenceMetaSolution(neighboring_sequences[i]));
+            }
+        }
+        return output;
+    }
     void print() const override{
         taskSequence.print();
     }

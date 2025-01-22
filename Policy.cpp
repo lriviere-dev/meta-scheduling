@@ -19,6 +19,14 @@ Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInst
             // Sort tasks in the group by release date, with ties going to lexicographical order
             std::vector<int> sortedGroup = group;
             std::sort(sortedGroup.begin(), sortedGroup.end(), [&scenario](int t1, int t2) {
+                //first, check precedence constraints
+                if (scenario.precedenceConstraints[t1][t2]){
+                    return true;
+                }
+                if (scenario.precedenceConstraints[t2][t1]){
+                    return false;
+                }
+                //then, release dates
                 if (scenario.releaseDates[0][t1] != scenario.releaseDates[0][t2]) {
                     return scenario.releaseDates[0][t1] < scenario.releaseDates[0][t2];
                 }
@@ -33,7 +41,7 @@ Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInst
     else if (const auto* SeqMeta = dynamic_cast<const SequenceMetaSolution*>(&metaSolution)) {
         return Sequence((*SeqMeta).get_sequence().get_tasks());
     }
-        // Handling all ListMetaSolution types via their underlying metasolution type (recursive)
+    // Handling all ListMetaSolution types via their underlying metasolution type (recursive)
     else if (const auto* listMeta = dynamic_cast<const ListMetaSolutionBase*>(&metaSolution)) {
         Sequence minSeq = extract_sequence(*listMeta->get_meta_solutions().front(), scenario); // Initialize with the first sequence
 
@@ -46,15 +54,6 @@ Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInst
         }
         return minSeq; // Return the valid Sequence    
     }
-    /*else if (const auto* SeqSetMeta = dynamic_cast<const SequenceSetMetaSolution*>(&metaSolution)) {
-        const Sequence* minSeq = nullptr;
-        for (const auto& seq : SeqSetMeta->get_sequence_set()) {
-            if (!minSeq || seq.isLexicographicallySmaller(*minSeq, scenario)) {
-                minSeq = &seq;
-            }
-        }
-        return Sequence(minSeq->get_tasks());
-    }*/
     // Add other MetaSolution type checks here if necessary
 
     throw std::invalid_argument("Unsupported MetaSolution type in FIFOPolicy::extract_sequence.");
@@ -113,7 +112,7 @@ void FIFOPolicy::define_objective(IloEnv env, IloModel& model,
         for (int i = 0; i < nbJobs; i++) {
             completions[i] = IloEndOf(jobs[s][i]);
         }
-        scenario_scores[s] = IloMax(completions);
+        scenario_scores[s] = IloSum(completions);
 
     }
 

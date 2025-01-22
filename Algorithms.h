@@ -166,12 +166,13 @@ public:
 
 class EssweinAlgorithm : public SecondStageAlgorithm {
 public:
-    EssweinAlgorithm() {
-        //timeLimitSeconds=60*60; //Time limit should never be reached but for fairness it should be there anyways.
+    EssweinAlgorithm(Policy* policy) {
+        this->policy = policy; // Use the policy provided during initialization
     }
 
-
     //there is probably a memory leak in there. But at least I'm not deleting things I want to keep.
+    //WARNING : the following function (solve_savesteps) is a copy of "solve", that returns a list of solutions instead.
+    //modifications to solve should be implemented in solve_savesteps also.
     MetaSolution* solve(const DataInstance& instance) override {
         // Ensure the poicy is set
         if (!policy) {
@@ -231,6 +232,73 @@ public:
 
 
         return currentSolution; // Return the final solution
+    }
+
+    //WARNING : this is a copy of the solve function, modified to return intermediate solutions aswell.
+    //there may be a more update-friendly way to do this.
+    std::vector<MetaSolution*> solve_savesteps(const DataInstance& instance) override {
+        // Ensure the poicy is set
+        if (!policy) {
+            throw std::runtime_error("Policy must be set before running the algorithm.");
+        }
+        // Ensure the initial sol is set
+        if (!initial_solution) {
+            throw std::runtime_error("Initial solution must be set before running the algorithm.");
+        }
+
+        std::vector<MetaSolution*> accu;
+
+        GroupMetaSolution* currentSolution = nullptr;
+
+        // Initialize the meta solution as a GroupMetaSolution based on initial JSEQ solution
+        SequenceMetaSolution* sequenceSolution = dynamic_cast<SequenceMetaSolution*>(initial_solution);
+
+        if (sequenceSolution) {
+            // If the cast is successful, call to_gseq
+            currentSolution = sequenceSolution->to_gseq();
+        } else {
+            // Handle the case where the cast fails (optional)
+            throw std::runtime_error("Initial solution is not of type SequenceMetaSolution!");
+        }
+
+        // Main loop: merge groups while improvement exists
+        bool improvement = true;
+        while (improvement) { //&& !timeLimitExceeded(startTime)
+            accu.push_back(currentSolution);// save current solution
+            improvement = false;
+            int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
+            int bestCandidatelargestGroupSize = currentSolution->largest_group_size();
+            int bestCandidateMergeId =-1;
+
+            for (int i = 0; i < currentSolution->nb_groups()-1; ++i){
+                GroupMetaSolution* candidateSolution = currentSolution->merge_groups(i);
+                int CandidateScore = policy->evaluate_meta(*candidateSolution, instance); // Note that Esswein's algorithm conserves precedence constraints compliance.
+                int CandidatelargestGroupSize = candidateSolution->largest_group_size();
+                //std::cout <<"considering :";
+                //candidateSolution->print();
+                //std::cout <<"\n";
+                
+                if ((CandidateScore<bestCandidateScore) || 
+                    ((CandidateScore==bestCandidateScore) && (CandidatelargestGroupSize < bestCandidatelargestGroupSize))){
+                    std::cout << CandidateScore << "*:";
+                    candidateSolution->print();
+                    std::cout << "\n\n";
+                    bestCandidateMergeId = i;
+                    bestCandidateScore = CandidateScore;
+                    bestCandidatelargestGroupSize = CandidatelargestGroupSize;
+                    improvement=true;
+                }
+                delete candidateSolution;
+            }
+            if (improvement && bestCandidateMergeId != -1) {
+                GroupMetaSolution* oldSolution = currentSolution; // Save the old pointer
+                currentSolution = currentSolution->merge_groups(bestCandidateMergeId); // Get the new solution
+                delete oldSolution; // Delete the old solution            
+            }
+        }
+
+
+        return accu; // Return the steps taken including start (sequence-like) and the endpoint (output of solve)
     }
 
 private:

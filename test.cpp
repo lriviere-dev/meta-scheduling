@@ -155,8 +155,7 @@ int main() {
 
     std::cout << "==== ESSWEIN WARM-SOLVER TEST ===" << std::endl;
 
-    EssweinAlgorithm EWSolver;
-    EWSolver.setPolicy(&fifo);
+    EssweinAlgorithm EWSolver(&fifo);
     EWSolver.set_initial_solution(*jseq_optim);
     MetaSolution* ew_sol_output = EWSolver.solve(instance);
 

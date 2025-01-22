@@ -11,6 +11,9 @@
 template <typename T>
 class BestOfAlgorithm : public SecondStageAlgorithm {
 public:
+    BestOfAlgorithm<T>(Policy* policy) {
+        this->policy = policy; // Use the policy provided during initialization
+    }
 
     MetaSolution* solve(const DataInstance& instance) override {
         // Ensure the policy is set
