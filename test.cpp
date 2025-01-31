@@ -188,7 +188,7 @@ int main() {
     bestof_output->print();
 
     */
-    DataInstance instance("instances/test200.data");
+    DataInstance instance("instances/test50.data");
     DataInstance single_scenario(instance,0);
     instance.print();
     FIFOPolicy fifo; //defining policy

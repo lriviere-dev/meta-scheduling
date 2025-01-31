@@ -9,7 +9,9 @@ class Sequence {
 public:
     // Constructor accepting a vector of task IDs
     Sequence(const std::vector<int>& tasks);
-    
+
+    Sequence();//empty constructor
+
     // Print function for displaying the sequence
     void print() const;
 

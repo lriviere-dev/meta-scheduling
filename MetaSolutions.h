@@ -28,7 +28,7 @@ public:
 class GroupMetaSolution : public MetaSolution {
 public:
     // Constructor: Takes a sequence of sets of tasks
-    GroupMetaSolution(const std::vector<std::vector<int>>& taskGroups)
+    GroupMetaSolution(std::vector<std::vector<int>>& taskGroups)
         : taskGroups(taskGroups) {}
 
     void print() const override{
@@ -73,7 +73,7 @@ public:
         return taskGroups.size();
     }
 
-    int largest_group_size() const {
+    int largest_group_size()  {
         size_t max_size=0;
         for (const auto& group : this->get_task_groups()){
             if (group.size()>max_size){
@@ -84,7 +84,7 @@ public:
     }
 
     // Method to get the sequence of task groups (sets of tasks) (private)
-    const std::vector<std::vector<int>>& get_task_groups() const {
+    std::vector<std::vector<int>>& get_task_groups() {
         return taskGroups;
     }
 

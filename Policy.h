@@ -22,7 +22,7 @@ public:
     virtual ~Policy() = default;
 
     // Pure virtual function to be implemented by derived policies
-    virtual Sequence extract_sequence(const MetaSolution& metaSolution, DataInstance& scenario) const = 0;
+    virtual Sequence extract_sequence(MetaSolution& metaSolution, DataInstance& scenario) const = 0;
     virtual int extract_sub_metasolution_index(const MetaSolution& metaSolution, DataInstance& scenario) const = 0;
     virtual Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& scenario) const = 0;
     virtual void define_objective(IloEnv env, IloModel& model, 
@@ -114,7 +114,7 @@ public:
     ~FIFOPolicy() = default;
 
     // Override extract_sequence for GroupMetaSolution
-    Sequence extract_sequence(const MetaSolution& metaSolution, DataInstance& scenario) const override;
+    Sequence extract_sequence(MetaSolution& metaSolution, DataInstance& scenario) const override;
     int extract_sub_metasolution_index(const MetaSolution& metaSolution, DataInstance& scenario) const override;
     Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& scenario) const override;
     void define_objective(IloEnv env, IloModel& model, 

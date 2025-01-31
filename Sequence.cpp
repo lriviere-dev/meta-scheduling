@@ -4,6 +4,8 @@
 // Constructor implementation
 Sequence::Sequence(const std::vector<int>& tasks) : tasks(tasks) {}
 
+Sequence::Sequence(){}
+
 // Print function implementation
 void Sequence::print() const {
     for (size_t i = 0; i<tasks.size(); i++) {

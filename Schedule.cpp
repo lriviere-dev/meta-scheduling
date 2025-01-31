@@ -26,9 +26,7 @@ int Schedule::evaluate(DataInstance& instance) {
     int sumci = 0;
     for (int i = 0; i < instance.N; ++i) {
         //int lateness = startTimes[i]+instance.durations[i]-instance.dueDates[i];
-        int end_time = startTimes[i]+instance.durations[i];
-        sumci += end_time;
-        
+        sumci +=  startTimes[i]+instance.durations[i]; //adding end time of task       
     }
     return sumci;
 }
