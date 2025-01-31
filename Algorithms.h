@@ -227,7 +227,7 @@ public:
             }
             if (improvement && bestCandidateMergeId != -1) {
                 GroupMetaSolution* oldSolution = currentSolution; // Save the old pointer
-                bestCandidateScore = oldSolution.score; //saves us an evaluation of the copy
+                bestCandidateScore = oldSolution->score; //saves us an evaluation of the copy
                 currentSolution = currentSolution->merge_groups(bestCandidateMergeId); // Get the new solution
                 delete oldSolution; // Delete the old solution            
             }
