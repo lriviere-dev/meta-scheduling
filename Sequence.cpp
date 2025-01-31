@@ -38,8 +38,8 @@ bool Sequence::check_precedence_constraints(const DataInstance& instance) const 
 
 //compares two sequences to find the preffered one by FIFO in a given scenario 
 //TODO : Warning: should depend on policy ! (the theory here needs to be layed out)
-bool Sequence::isLexicographicallySmaller(const Sequence& other, const DataInstance& scenario) const {
-    const auto& releaseDates = scenario.releaseDates[0]; // Assuming single-machine case
+bool Sequence::isLexicographicallySmaller(const Sequence& other, const DataInstance& instance, int scenario_id) const {
+    const auto& releaseDates = instance.releaseDates[scenario_id]; // Assuming single-machine case
 
     // Compare task order in sequences
     for (size_t i = 0; i < tasks.size(); ++i) { 

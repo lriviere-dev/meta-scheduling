@@ -8,7 +8,7 @@ public:
     std::vector<int> startTimes;
 
     explicit Schedule(std::vector<int> startTimesArray);
-    int evaluate(DataInstance& instance);
+    int evaluate(const DataInstance& instance);
     void print();
 };
 

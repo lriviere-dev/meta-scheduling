@@ -22,9 +22,9 @@ public:
     virtual ~Policy() = default;
 
     // Pure virtual function to be implemented by derived policies
-    virtual Sequence extract_sequence(MetaSolution& metaSolution, DataInstance& scenario) const = 0;
-    virtual int extract_sub_metasolution_index(const MetaSolution& metaSolution, DataInstance& scenario) const = 0;
-    virtual Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& scenario) const = 0;
+    virtual Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const = 0;
+    virtual int extract_sub_metasolution_index(const MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const = 0;
+    virtual Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& instance, int scenario_id) const = 0;
     virtual void define_objective(IloEnv env, IloModel& model, 
                         IloIntervalVarArray2& jobs, const DataInstance& instance, 
                         IloIntExprArray& scenario_scores,  IloIntVar& aggregated_objective) const = 0;
@@ -52,11 +52,10 @@ public:
             // Iterate over all scenarios in the DataInstance
             int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
             for (int i=0; i<instance.S; i++) { 
-                DataInstance scenario = instance.single_instance(i);
-                Sequence seq = this->extract_sequence(metasol, scenario);
-                Schedule schedule = this->transform_to_schedule(seq, scenario);
+                Sequence seq = this->extract_sequence(metasol, instance, i);
+                Schedule schedule = this->transform_to_schedule(seq, instance, i);
                 // Evaluate the schedule for the current scenario
-                int cost = schedule.evaluate(scenario);
+                int cost = schedule.evaluate(instance);
                 //set metasol data
                 metasol.scores.push_back(cost);
                 metasol.front_sequences.push_back(seq);                
@@ -91,9 +90,6 @@ public:
         int limiting_index = 0; 
         int limiting_scenario = 0; 
         for (int i=0; i<instance.S; i++) { 
-            //DataInstance scenario = instance.single_instance(i);
-            //Sequence seq = metasol->front_sequences[i];
-            //Schedule schedule = this->transform_to_schedule(seq, scenario);
             int cost = metasol.scores[i];
             // Update the maximum cost
             if (cost > maxCost) {
@@ -101,9 +97,7 @@ public:
                 limiting_scenario = i;
             }
         }
-        DataInstance scenario = instance.single_instance(limiting_scenario);
-        limiting_index = this->extract_sub_metasolution_index(metasol, scenario);
-        //std::cout << "limiting seq index :"<<limiting_index << " scenario :" << limiting_scenario << " score :" << this->evaluate_meta(metasol, scenario) << std::endl;
+        limiting_index = this->extract_sub_metasolution_index(metasol, instance, limiting_scenario);
         return limiting_index; 
     }
 };
@@ -114,9 +108,9 @@ public:
     ~FIFOPolicy() = default;
 
     // Override extract_sequence for GroupMetaSolution
-    Sequence extract_sequence(MetaSolution& metaSolution, DataInstance& scenario) const override;
-    int extract_sub_metasolution_index(const MetaSolution& metaSolution, DataInstance& scenario) const override;
-    Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& scenario) const override;
+    Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override;
+    int extract_sub_metasolution_index(const MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override;
+    Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& instance, int scenario_id) const override;
     void define_objective(IloEnv env, IloModel& model, 
                         IloIntervalVarArray2& jobs, const DataInstance& instance, 
                         IloIntExprArray& scenario_scores,  IloIntVar& aggregated_objective) const override;

@@ -20,7 +20,7 @@ public:
 
     bool check_precedence_constraints(const DataInstance& instance) const;
 
-    bool isLexicographicallySmaller(const Sequence& other, const DataInstance& scenario) const;
+    bool isLexicographicallySmaller(const Sequence& other, const DataInstance& instance, int scenario_id) const;
 
     std::vector<Sequence> neighbours(int neighborhood_size);
 

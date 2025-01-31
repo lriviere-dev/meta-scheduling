@@ -11,6 +11,25 @@
 
 
 int main() {
+    DataInstance instance("instances/test50.data");
+    instance.print();
+    FIFOPolicy fifo; //defining policy
+    std::cout << std::endl << std::endl;
+
+    std::cout << std:: endl << "==== SL ALGO TEST ===" << std::endl;
+
+    StreamlinedAlgorithm slalgo(&fifo);
+    MetaSolution* slalgo_output = slalgo.solve(instance);
+    std::cout<<"bestof output : ";
+    slalgo_output->print();
+    std::cout<<"Score : " << fifo.evaluate_meta(*slalgo_output, instance) << std::endl; 
+
+    std::cout<<"\n\nTEST END\n";  
+    return 0;
+}
+
+
+    //Some backup code if needed. (probably out of date)
     /*
     std::cout << "==== INSTANCE SCENARIO TEST ===" << std::endl;
     //Loading up instance/scenario
@@ -188,20 +207,3 @@ int main() {
     bestof_output->print();
 
     */
-    DataInstance instance("instances/test50.data");
-    DataInstance single_scenario(instance,0);
-    instance.print();
-    FIFOPolicy fifo; //defining policy
-    std::cout << std::endl << std::endl;
-
-    std::cout << std:: endl << "==== SL ALGO TEST ===" << std::endl;
-
-    StreamlinedAlgorithm slalgo(&fifo);
-    MetaSolution* slalgo_output = slalgo.solve(instance);
-    std::cout<<"bestof output : ";
-    slalgo_output->print();
-    std::cout<<"Score : " << fifo.evaluate_meta(*slalgo_output, instance) << std::endl; 
-
-    std::cout<<"\n\nTEST END\n";  
-    return 0;
-}

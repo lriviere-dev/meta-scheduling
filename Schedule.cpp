@@ -10,13 +10,11 @@ Schedule::Schedule(std::vector<int> startTimesArray) : startTimes(startTimesArra
 
 // Maybe there should be an input for evaluation type sigma gamma. 
 // For now implemented type is max sumci.
-int Schedule::evaluate(DataInstance& instance) {
+// note that feasibility is not checked.
+int Schedule::evaluate(const DataInstance& instance) {
     // A schedule is evaluated for an instance with a single scenario
     // feasibility (precedences, overlap, release dates) is assumed
     
-    if (instance.S != 1) {
-        throw std::invalid_argument("The number of Scenario should be equal to 1 (S=1)");
-    }
     if (instance.N != startTimes.size()) {
         std::cout << "N = :" << instance.N << "nb tasks = :" << startTimes.size() << std::endl;
         throw std::invalid_argument("The number of start times should equal the number of tasks (N)");
