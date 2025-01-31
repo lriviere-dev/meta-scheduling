@@ -197,13 +197,15 @@ public:
 
         // Main loop: merge groups while improvement exists
         bool improvement = true;
+        int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
         while (improvement) { //&& !timeLimitExceeded(startTime)
             improvement = false;
-            int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
+            //setup default values
+            //int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
             int bestCandidatelargestGroupSize = currentSolution->largest_group_size();
             int bestCandidateMergeId =-1;
 
-            for (int i = 0; i < currentSolution->nb_groups()-1; ++i){
+            for (int i = 0; i < currentSolution->nb_groups()-1; ++i){//for every pair of group
                 GroupMetaSolution* candidateSolution = currentSolution->merge_groups(i);
                 int CandidateScore = policy->evaluate_meta(*candidateSolution, instance); // Note that Esswein's algorithm conserves precedence constraints compliance.
                 int CandidatelargestGroupSize = candidateSolution->largest_group_size();
@@ -225,6 +227,7 @@ public:
             }
             if (improvement && bestCandidateMergeId != -1) {
                 GroupMetaSolution* oldSolution = currentSolution; // Save the old pointer
+                bestCandidateScore = oldSolution.score; //saves us an evaluation of the copy
                 currentSolution = currentSolution->merge_groups(bestCandidateMergeId); // Get the new solution
                 delete oldSolution; // Delete the old solution            
             }
@@ -236,6 +239,7 @@ public:
 
     //WARNING : this is a copy of the solve function, modified to return intermediate solutions aswell.
     //there may be a more update-friendly way to do this.
+    //I didn't implement the small optimization of saving the old solution score because if we save all solutions we are gonna evaluate it at some point anyway.
     std::vector<MetaSolution*> solve_savesteps(const DataInstance& instance) {
         // Ensure the poicy is set
         if (!policy) {

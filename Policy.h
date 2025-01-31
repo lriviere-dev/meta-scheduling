@@ -9,9 +9,14 @@
 #include <vector>
 #include <ilcp/cp.h>
 
+#include <tuple>
+#include <functional>
+
+#include <functional>
+
 
 //The Policy handles the second decision stage. From Meta solution to Sequence to Schedule. It opperates within a scenario.
-// WARNING : because of the current scope, some functions should be exclusive to "MAX-policies". small refactor is in order.
+// WARNING : because of the current scope, some functions should be exclusive to "MAX-policies" (extract_sub_metasolution_index for example). small refactor is in order.
 class Policy {
 public:
     virtual ~Policy() = default;
@@ -24,28 +29,53 @@ public:
                         IloIntervalVarArray2& jobs, const DataInstance& instance, 
                         IloIntExprArray& scenario_scores,  IloIntVar& aggregated_objective) const = 0;
     
-    //Functions common to all Policies
-    int evaluate_meta(const MetaSolution& metasol, const DataInstance& instance) const{
+    //Functions common to all Policies (i.e not virtual)
+    int evaluate_meta(MetaSolution& metasol, const DataInstance& instance) {
         // same for all policies. just extract a schedule and evaluate it for all scenarios.
         // assume aggregator : max
 
-        // Iterate over all scenarios in the DataInstance
-        int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
-        for (int i=0; i<instance.S; i++) { 
-            DataInstance scenario = instance.single_instance(i);
-            Sequence seq = this->extract_sequence(metasol, scenario);
-            Schedule schedule = this->transform_to_schedule(seq, scenario);
+        if (!metasol.scored_by){//metasol was not already scored -> score it and set front/scores for each scenario
 
-            // Evaluate the schedule for the current scenario
-            int cost = schedule.evaluate(scenario);
-            // Update the maximum cost
-            if (cost > maxCost) {
-                maxCost = cost;
+            //special case if metasol is a list of metasol, we recursively have to make sure to evaluate the underlying before
+            if (ListMetaSolutionBase* listMeta = dynamic_cast<ListMetaSolutionBase*>(&metasol)) {
+                for (auto submeta : listMeta->get_meta_solutions()){
+                    if (!submeta->scored_by){ //sub metasolution wasn't scored : evaluate it
+                        this->evaluate_meta(*submeta,instance);
+                    }
+                    else if (submeta->scored_by!=this){ // else if it is scored but not by this policy, throw
+                        throw std::runtime_error("sub metasolution was scored by a different policy");
+                    }
+                    //else do nothing, it is already scored, we can proceed
+                }
             }
-        }
 
-        return maxCost; // Return the aggregated value (max)
-        };
+            // Iterate over all scenarios in the DataInstance
+            int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
+            for (int i=0; i<instance.S; i++) { 
+                DataInstance scenario = instance.single_instance(i);
+                Sequence seq = this->extract_sequence(metasol, scenario);
+                Schedule schedule = this->transform_to_schedule(seq, scenario);
+                // Evaluate the schedule for the current scenario
+                int cost = schedule.evaluate(scenario);
+                //set metasol data
+                metasol.scores.push_back(cost);
+                metasol.front_sequences.push_back(seq);                
+                // Update the maximum cost
+                if (cost > maxCost) {
+                    maxCost = cost;
+                }
+            }
+            metasol.score = maxCost; //set metasol score
+            metasol.scored_by = this;
+            return maxCost; // Return the aggregated value (max)
+        }
+        else if (metasol.scored_by!=this){ // else if it is scored but not by this policy, throw
+            throw std::runtime_error("metasolution was already scored by different policy"); //should not happen while we have only one policy.
+        }
+        else{ //metasol was scored and by us already, just send result.
+            return metasol.score;
+        }
+    };
             
     int find_limiting_element(const MetaSolution& metasol, const DataInstance& instance) const{ //finds the limiting element of a listMetaSOlution
         // same for all policies. Similar to evaluate_meata but keep the scenario culprit.
@@ -59,24 +89,24 @@ public:
         // Iterate over all scenarios in the DataInstance
         int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
         int limiting_index = 0; 
+        int limiting_scenario = 0; 
         for (int i=0; i<instance.S; i++) { 
-            DataInstance scenario = instance.single_instance(i);
-            Sequence seq = this->extract_sequence(metasol, scenario);
-            int used_meta_index = this->extract_sub_metasolution_index(metasol, scenario);
-            Schedule schedule = this->transform_to_schedule(seq, scenario);
-
-            // Evaluate the schedule for the current scenario
-            int cost = schedule.evaluate(scenario);
+            //DataInstance scenario = instance.single_instance(i);
+            //Sequence seq = metasol->front_sequences[i];
+            //Schedule schedule = this->transform_to_schedule(seq, scenario);
+            int cost = metasol.scores[i];
             // Update the maximum cost
             if (cost > maxCost) {
                 maxCost = cost;
-                limiting_index = used_meta_index;
+                limiting_scenario = i;
             }
         }
-
+        DataInstance scenario = instance.single_instance(limiting_scenario);
+        limiting_index = this->extract_sub_metasolution_index(metasol, scenario);
+        //std::cout << "limiting seq index :"<<limiting_index << " scenario :" << limiting_scenario << " score :" << this->evaluate_meta(metasol, scenario) << std::endl;
         return limiting_index; 
-        }
-    };
+    }
+};
 
 //We will only use FIFOpolicy, but we could imagine other policies.
 class FIFOPolicy : public Policy {

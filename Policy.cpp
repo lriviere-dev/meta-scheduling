@@ -8,6 +8,12 @@
 
 //extracts a sequence from a metasolution for a given scenario.
 Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInstance& scenario) const {
+
+    if(metaSolution.scored_by){throw std::runtime_error("Extracting sequence but metasol is already scored.");}
+
+    std::vector<int> emptyTasks;
+    Sequence output(emptyTasks); 
+    bool set_output = false;
     // Try to cast to GroupMetaSolution
     if (const auto* groupMeta = dynamic_cast<const GroupMetaSolution*>(&metaSolution)) {
         // Handle GroupMetaSolution
@@ -36,29 +42,37 @@ Sequence FIFOPolicy::extract_sequence(const MetaSolution& metaSolution, DataInst
             // Add sorted tasks to the final sequence
             sequence.insert(sequence.end(), sortedGroup.begin(), sortedGroup.end());
         }
-        return Sequence(sequence);
+        output = Sequence(sequence);
+        set_output = true;
     }
     else if (const auto* SeqMeta = dynamic_cast<const SequenceMetaSolution*>(&metaSolution)) {
-        return Sequence((*SeqMeta).get_sequence().get_tasks());
+        output = Sequence((*SeqMeta).get_sequence().get_tasks());
+        set_output = true;
     }
     // Handling all ListMetaSolution types via their underlying metasolution type (recursive)
+    //we assume the underlying metasolutions have already been scored by the policy
     else if (const auto* listMeta = dynamic_cast<const ListMetaSolutionBase*>(&metaSolution)) {
-        Sequence minSeq = extract_sequence(*listMeta->get_meta_solutions().front(), scenario); // Initialize with the first sequence
+        Sequence minSeq = listMeta->get_meta_solutions()[0]->front_sequences[scenario.scenario_id]; // Initialize with the first sequence
 
-        for (const auto& meta_sol : listMeta->get_meta_solutions()) {
-            Sequence seq = extract_sequence(*meta_sol, scenario);
+        for (const auto& meta_sol : listMeta->get_meta_solutions()) { //find the leximin sequence
+            Sequence seq = meta_sol->front_sequences[scenario.scenario_id];
 
             if (seq.isLexicographicallySmaller(minSeq, scenario)) {
                 minSeq = seq; // Copy the Sequence
             }
         }
-        return minSeq; // Return the valid Sequence    
+        output = minSeq; 
+        set_output = true;
     }
     // Add other MetaSolution type checks here if necessary
-
-    throw std::invalid_argument("Unsupported MetaSolution type in FIFOPolicy::extract_sequence.");
+    if (!set_output){
+        throw std::invalid_argument("Unsupported MetaSolution type in FIFOPolicy::extract_sequence.");
+    }
+    return output;
 }
 
+//finds the index of the metasolution (in the list of metasolution) that is used in a given scenario.
+//TODO work could be avoided by saving it along front. (would also have to update when removing a sequence)
 int FIFOPolicy::extract_sub_metasolution_index(const MetaSolution& metasol, DataInstance& scenario) const {
     
     //assert list solution
@@ -66,17 +80,26 @@ int FIFOPolicy::extract_sub_metasolution_index(const MetaSolution& metasol, Data
     if (!listMetaSolution) {
         throw std::runtime_error("MetaSolution must be of type ListMetaSolutionBase.");
     }
-    Sequence minSeq = extract_sequence(*listMetaSolution->get_meta_solutions().front(), scenario); // Initialize with the first sequence
+    //asssert unique scenario
+    if (scenario.S>1) {
+        throw std::runtime_error("Scenario should be unique but S>1.");
+    }
+    //asssert metasol was scored
+    if (!metasol.scored_by) {
+        throw std::runtime_error("metasol should already be scored by a policy");
+    }
+    Sequence minSeq = listMetaSolution->get_meta_solutions()[0]->front_sequences[scenario.scenario_id]; // Initialize with the first sequence
     int minIndex = 0;
 
     for (size_t i=0 ; i < listMetaSolution->get_meta_solutions().size(); i++) {
-        Sequence seq = extract_sequence(*listMetaSolution->get_meta_solutions()[i], scenario);
+        Sequence seq = listMetaSolution->front_sequences[scenario.scenario_id];
         if (seq.isLexicographicallySmaller(minSeq, scenario)) {
             minSeq = seq; 
             minIndex = i; 
         }
     }
-    return minIndex; // Return the valid Sequence    
+    
+    return minIndex; // Return the index of the metasolution in the list that outputs the min sequence    
 }
 
 
@@ -120,26 +143,4 @@ void FIFOPolicy::define_objective(IloEnv env, IloModel& model,
     for (int s = 0; s < nbScenarios; s++)
         model.add(aggregated_objective >= scenario_scores[s]);
     model.add(IloMinimize(env, aggregated_objective));
-    /* Backup code for other objectives :  
-    // model.add(IloMinimize(env, IloSum(objectives) / nbScenarios));
-    IloIntExprArray L(env,nbScenarios);// array of obj for each scenario
-    for (int s = 0; s < nbScenarios; s++) {
-        IloIntExprArray L2(env, nbJobs); // array of obj for each tas of a scenario
-
-        if (scenario_obj == 0) {
-            //Compute objective : Maximum lateness over tasks
-            for (int i=0;i<nbJobs;i++) {
-                L2[i] = IloMax(0, IloEndOf(Jobs[s][i]) - dueDate[(dVar)?s:0][i]);
-            }
-            L[s] = IloMax(L2); //max lateness
-        }
-        else { //sumCi
-            for (int i=0;i<nbJobs;i++) {
-                L2[i] = IloEndOf(Jobs[s][i]);
-            }
-            L[s] = IloSum(L2); // max completion time
-        }
-    }
-    */
-
 }

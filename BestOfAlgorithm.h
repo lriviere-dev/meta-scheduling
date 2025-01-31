@@ -47,18 +47,18 @@ public:
         int bestScore = policy->evaluate_meta(*currentSolution, instance);
 
         while (currentSolution->get_meta_solutions().size() > 1) {
+
             int sol_index = policy->find_limiting_element(*currentSolution, instance);
+            //std::cout << "\t\tLimiting index : " << sol_index << std::endl;
 
             // Update current solution (remove the limiting element)
             auto updatedSolution = currentSolution->remove_meta_solution_index(sol_index);
             currentSolution = std::make_unique<ListMetaSolution<T>>(std::move(*updatedSolution));
             // Evaluate new score
             int newScore = policy->evaluate_meta(*currentSolution, instance);
-            /*std::cout << "\nCURRENT SOL :";
-            currentSolution->print();
-            std::cout << "=>: " << newScore<<"\n";*/
 
-            if (newScore <= bestScore) { // we prefer a smaller output. !Doesn't mean there is no redundancy at all
+
+            if (newScore <= bestScore) { // we prefer a smaller output. Note : Doesn't mean there is no redundancy at all nor that list is as small as possible
                 bestScore = newScore;
                 bestSolution = std::make_unique<ListMetaSolution<T>>(*currentSolution);
             }

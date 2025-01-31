@@ -1,20 +1,21 @@
 #include <iostream>
-#include "MetaSolutions.h"
-#include "ListMetaSolutions.h"
-#include "Policy.h"
+#include "Schedule.h"
 #include "Instance.h"
 #include "Sequence.h"
-#include "Schedule.h"
+#include "Policy.h"
+#include "MetaSolutions.h"
+#include "ListMetaSolutions.h"
 #include "Algorithms.h"
 #include "StreamlinedAlgorithm.h"
 #include "BestOfAlgorithm.h"
 
 
 int main() {
+    /*
     std::cout << "==== INSTANCE SCENARIO TEST ===" << std::endl;
     //Loading up instance/scenario
     //DataInstance instance("instances/test.data");
-    DataInstance instance("instances/test.data");
+    DataInstance instance("instances/test2.data");
     DataInstance single_scenario(instance,0);
     single_scenario.print();
 
@@ -186,6 +187,12 @@ int main() {
     std::cout<<"bestof output : ";  
     bestof_output->print();
 
+    */
+    DataInstance instance("instances/test200.data");
+    DataInstance single_scenario(instance,0);
+    instance.print();
+    FIFOPolicy fifo; //defining policy
+    std::cout << std::endl << std::endl;
 
     std::cout << std:: endl << "==== SL ALGO TEST ===" << std::endl;
 

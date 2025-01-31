@@ -41,7 +41,7 @@ bool Sequence::isLexicographicallySmaller(const Sequence& other, const DataInsta
 
     // Compare task order in sequences
     for (size_t i = 0; i < tasks.size(); ++i) { 
-                int taskA = tasks[i];
+        int taskA = tasks[i];
         int taskB = other.tasks[i];
 
         if (releaseDates[taskA] != releaseDates[taskB]) {

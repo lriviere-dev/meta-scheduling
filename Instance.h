@@ -15,6 +15,9 @@ public:
     std::vector<std::vector<int>> releaseDates;
     std::vector<int> dueDates;
 
+    std::vector<DataInstance> scenarios;
+    int scenario_id = -1;
+
     DataInstance(const std::string& filename) { //constructor : reads from data file
         std::ifstream file(filename);
         if (!file.is_open()) {
@@ -75,6 +78,9 @@ public:
             ss >> dueDates[i];
         }
         file.close();
+        for (int s=0; s<S ;s++){
+            scenarios.push_back(DataInstance(*this, s));
+        }
     }
 
     DataInstance(const DataInstance& originalInstance, int s) {
@@ -87,6 +93,7 @@ public:
         durations = originalInstance.durations;
         releaseDates = {{originalInstance.releaseDates[s]}}; // Copy only one scenario's release dates
         dueDates = {originalInstance.dueDates}; // Copy only one scenario's due dates
+        scenario_id = s; // mark the id of the scenario
     }
 
     void print() const {
@@ -124,9 +131,40 @@ public:
     }
 
     DataInstance single_instance(int s) const { //extracts the single instance of scenario s
-        //make an instance by ref ?
-        return DataInstance(*this, s);
+        if (scenario_id==-1){ // normal call on a full instance
+            return scenarios[s];
+        }
+        else if (s==0){ //instance is already single, so we can only extract scen 0. Note that scenario ID might be different from 0
+            return *this;
+        }
+        else {
+            throw std::runtime_error("trying to extract sub scenario but only one is available.");
+        }
     }
+
+    size_t hash() const {// dirty hash for quick lookup (doesn't consider the data that's supposedly equal)
+        std::size_t seed = 0; 
+            
+        seed += std::hash<int>()(S); 
+        for (size_t i; i<releaseDates.size(); i++){
+            std::vector<int> vec = releaseDates[i];
+            for (int data : vec){
+                std::size_t datahash= std::hash<int>()(data); 
+                seed ^= datahash + 0x9e3779b9 + (i << 6) + (i >> 2);
+            }
+        }
+        return seed;
+    }
+
+    bool operator==(const DataInstance& other) const {// == operator to compare when hash collides. (comparing data that is always equal in the end for lazy eval, but could remove entirely)
+        return (N==other.N) && 
+               (S==other.S) &&
+               (releaseDates==other.releaseDates) &&
+               (durations==other.durations) &&
+               (dueDates==other.dueDates) &&
+               (precedenceConstraints==other.precedenceConstraints) ;
+
+    } 
 };
 
 #endif // DATAINSTANCE_H

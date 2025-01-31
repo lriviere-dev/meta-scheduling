@@ -2,15 +2,26 @@
 #define METASOLUTIONS_H
 
 #include "Sequence.h"
+#include "Policy.h"
 #include <vector>
 #include <iostream>
+#include <unordered_map>
+#include <algorithm>
+
+class Policy; //had a circular compile issue that this fixed. Could probably be removed.
 
 // Abstract class for MetaSolutions
 class MetaSolution {
 public:
     virtual ~MetaSolution() {}
-    virtual void print() const = 0; // Pure virtual to ensure all derived classes implement it
-    // Additional methods can be added here as needed
+    virtual void print() const = 0;
+
+    //following attributes save scores and sequences for efficiency purposes. Note that ultimately, they depend on a policy, which is ssumed to be unique here.
+    std::vector<Sequence> front_sequences; // front of the metasolution : the sequence expressed for each scenario
+    std::vector<int> scores; //scores of the expressed sequence in each scenario.
+    int score; //the aggregated score
+    //is set and marked by policy when evaluated for the first time
+    Policy * scored_by = nullptr;
 };
 
 // GroupMetaSolution: A specific meta solution that stores a sequence of permutable groups
@@ -63,7 +74,7 @@ public:
     }
 
     int largest_group_size() const {
-        int max_size=0;
+        size_t max_size=0;
         for (const auto& group : this->get_task_groups()){
             if (group.size()>max_size){
                 max_size = group.size();
@@ -77,6 +88,46 @@ public:
         return taskGroups;
     }
 
+    bool operator==(const MetaSolution& other) const {
+        // We downcast to the derived class here
+        const GroupMetaSolution* groupMeta = dynamic_cast<const GroupMetaSolution*>(&other);
+        if (groupMeta) {
+            // If it's a GroupMetaSolution, proceed with comparing the group
+            return this->compareGroups(*groupMeta);
+        }
+        return false; // Not equal if it's not the same type
+    }
+
+    bool compareGroups(const GroupMetaSolution& other) const {
+        if (taskGroups.size() != other.taskGroups.size()) {
+            return false; // If the number of groups is different, they are not equal
+        }
+
+        for (size_t i = 0; i < taskGroups.size(); ++i) {
+            if (taskGroups[i].size() != other.taskGroups[i].size()) {
+            return false; // If the size of any group is different, they are not equal
+        }
+        }
+
+        //ELse we have to do the tedious check work.
+        //TODO : could have canonically sorted groups to not have to sort again every time (expensive).
+        for (size_t i = 0; i < taskGroups.size(); ++i) { 
+
+            // Copy the groups and sort them to ensure comparison is order-independent within groups
+            std::vector<int> sortedThisGroup = taskGroups[i];
+            std::vector<int> sortedOtherGroup = other.taskGroups[i];
+
+            std::sort(sortedThisGroup.begin(), sortedThisGroup.end());
+            std::sort(sortedOtherGroup.begin(), sortedOtherGroup.end());
+
+            if (sortedThisGroup != sortedOtherGroup) {
+                return false; // Groups at this position are not equal
+            }
+        }
+
+        return true; // All groups match
+    }
+    
 private:
     std::vector<std::vector<int>> taskGroups; // A sequence of sets of tasks
 };
@@ -120,43 +171,26 @@ public:
         return taskSequence;
     }
 
+
+    bool operator==(const MetaSolution& other) const  {
+        // We downcast to the derived class here
+        const SequenceMetaSolution* seqMeta = dynamic_cast<const SequenceMetaSolution*>(&other);
+        if (seqMeta) {
+            // If it's a SeqMeta, proceed with comparing the group
+            return this->compareSeqs(*seqMeta);
+        }
+        return false; // Not equal if it's not the same type
+    }
+
+
+    bool compareSeqs(const SequenceMetaSolution& other) const  {
+        return taskSequence.get_tasks() == other.taskSequence.get_tasks();
+    }
+    
 private:
     Sequence taskSequence;
 }; 
 
-
-// The set of sequences sequence (SSEQ) 
-//WARNING : FUNCTIONALLY IDENTICAL AS List of JSEQ !! Eventually to remove ! TODO !
-class SequenceSetMetaSolution : public MetaSolution {
-public:
-
-    SequenceSetMetaSolution(const std::vector<Sequence>& taskSequences)
-        : taskSequences(taskSequences) {}
-
-    SequenceSetMetaSolution(const std::vector<std::vector<int>>& rawTaskSequences) {
-            for (const auto& taskSeq : rawTaskSequences) {
-                taskSequences.push_back(Sequence(taskSeq));
-            } 
-        }
-
-    void print() const override{
-        std::cout << "{";
-        for (size_t i = 0; i < taskSequences.size(); ++i) {
-            taskSequences[i].print(); // Use sequence print
-            if (i < taskSequences.size() - 1) {
-                std::cout << ", "; // Print a comma after each sequence except the last one
-            }
-        }
-        std::cout << "}";
-    }
-
-    const std::vector<Sequence>& get_sequence_set() const {
-        return taskSequences;
-    }
-
-private:
-    std::vector<Sequence> taskSequences;
-}; 
 
 // You can define more derived classes here...
 
