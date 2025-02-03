@@ -39,34 +39,40 @@ public:
             throw std::runtime_error("Initial solution must be of type ListMetaSolution<T>.");
         }
 
-        // Create a copy of the derived solution
-        auto currentSolution = std::make_unique<ListMetaSolution<T>>(*derivedSolution);
-        auto bestSolution = std::make_unique<ListMetaSolution<T>>(*currentSolution);
+        // Create a copy of the derived solution that we can then omdify inplace
+        ListMetaSolution<T> currentSolution = ListMetaSolution<T>(*derivedSolution); //calling copy constructor
+        std::vector<int> bestRemoves;
+        std::vector<int> removes;
 
         // Evaluate the initial score
-        int bestScore = policy->evaluate_meta(*currentSolution, instance);
+        int bestScore = policy->evaluate_meta(currentSolution, instance);
 
-        while (currentSolution->get_meta_solutions().size() > 1) {
+        while (currentSolution.get_meta_solutions().size() > 1) {
 
-            int sol_index = policy->find_limiting_element(*currentSolution, instance);
+            int sol_index = policy->find_limiting_element(currentSolution, instance);
             //std::cout << "\t\tLimiting index : " << sol_index << std::endl;
 
             // Update current solution (remove the limiting element)
-            auto updatedSolution = currentSolution->remove_meta_solution_index(sol_index);
-            currentSolution = std::make_unique<ListMetaSolution<T>>(std::move(*updatedSolution));
+            currentSolution.remove_meta_solution_index(sol_index);
+            removes.push_back(sol_index);//saving the removed solution index to build it back when needed
             // Evaluate new score
-            int newScore = policy->evaluate_meta(*currentSolution, instance);
+            int newScore = policy->evaluate_meta(currentSolution, instance);
 
 
             if (newScore <= bestScore) { // we prefer a smaller output. Note : Doesn't mean there is no redundancy at all nor that list is as small as possible
                 bestScore = newScore;
-                bestSolution = std::make_unique<ListMetaSolution<T>>(*currentSolution);
+                bestRemoves = removes;
             }
         }
 
-        // Return the best solution and release ownership
-        return bestSolution.release();
+        ListMetaSolution<T>* outputSol = new ListMetaSolution<T>(*derivedSolution); //recreate a copy of the best solution
+        for(size_t i =0; i<bestRemoves.size();i++){ //remove appropriate elements
+            outputSol->remove_meta_solution_index(bestRemoves[i]);
+        }
+
+        return outputSol;
     }
+
 };
 
 #endif //BOALGO_H

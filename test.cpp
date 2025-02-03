@@ -11,7 +11,7 @@
 
 
 int main() {
-    DataInstance instance("instances/test50.data");
+    DataInstance instance("instances/test20.data");
     instance.print();
     FIFOPolicy fifo; //defining policy
     std::cout << std::endl << std::endl;

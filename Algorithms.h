@@ -79,7 +79,7 @@ public:
 
         char name[32]; // dummy variable to temporarily store name of elements
         std::vector<int> final_solution;
-        int limit_time = 1; // max solve time in minutes
+        int limit_time = 10; // max solve time in seconds
 
         //Create environment, model problem
         IloEnv env;
@@ -131,7 +131,7 @@ public:
             //Create an instance of IloCP
             IloCP cp(model);
             cp.setParameter(IloCP::LogVerbosity,IloCP::Quiet);
-            cp.setParameter(IloCP::TimeLimit, limit_time*60); //limit time to 1 hour
+            cp.setParameter(IloCP::TimeLimit, limit_time); 
             cp.setParameter(IloCP::Workers, 1); //set workers to 1
             //std::cout  << "Solving... \n" ;
 

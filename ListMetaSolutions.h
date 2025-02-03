@@ -12,7 +12,7 @@ class ListMetaSolutionBase : public MetaSolution {
 public:
     virtual ~ListMetaSolutionBase() {}
     virtual std::vector<MetaSolution*> get_meta_solutions() const = 0;
-    virtual ListMetaSolutionBase* remove_meta_solution_index(size_t index) const = 0;
+    virtual void remove_meta_solution_index(size_t index)  = 0;
 };
 
 template <typename T>
@@ -32,15 +32,20 @@ public:
         metaSolutions.push_back(metaSolution);
     }*/
 
-    ListMetaSolution<T>* remove_meta_solution_index(size_t index) const override {
+    void remove_meta_solution_index(size_t index)  override {
         if (index >= metaSolutions.size()) {
             throw std::out_of_range("Index out of range");
         }
-        // Create a copy of the metaSolutions and remove the specified index
-        std::vector<T> newMetaSolutions = metaSolutions;
-        newMetaSolutions.erase(newMetaSolutions.begin() + index);
-        // Return a new ListMetaSolution with the updated list
-        return new ListMetaSolution<T>(newMetaSolutions);
+        metaSolutions.erase(metaSolutions.begin() + index);
+        reset_evaluation();
+    }
+
+    //call when modifying solution in place, removes evaluated tag to re trigger evaluation.
+    void reset_evaluation()  {
+        scored_by = nullptr;
+        score = -1;
+        scores.clear();
+        front_sequences.clear();
     }
 
     const std::vector<T>& get_meta_solutions_typed() const {
