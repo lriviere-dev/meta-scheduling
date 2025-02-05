@@ -83,7 +83,12 @@ public:
         std::cout << std::endl;
 
         // Print the 4 solutions reached
-        std::vector<MetaSolution*> outputs = {jseq_solution, gseq_solution, sjseq_solution, sgseq_solution};
+        //std::vector<MetaSolution*> outputs = {jseq_solution, gseq_solution, sjseq_solution, sgseq_solution};
+        policy->evaluate_meta(*sgseq_solution,instance);
+        policy->evaluate_meta(*sjseq_solution,instance);
+        MetaSolution * clean_sgseq_solution = (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->front_sub_metasolutions();
+        MetaSolution * clean_sjseq_solution = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->front_sub_metasolutions();
+        std::vector<MetaSolution*> outputs = {jseq_solution, gseq_solution, clean_sjseq_solution, clean_sgseq_solution};
         for (size_t i = 0; i<outputs.size(); i++){
             std::cout << "Output " << i << ": " << typeid(*outputs[i]).name() << std::endl;
             std::cout << "Solution: ";
@@ -102,7 +107,7 @@ private :
     // Note : FIFO and other local decisions heuristic can handle solutions containing invalid solutions in theory, but my code might need tweaks to do so.
    std::vector<SequenceMetaSolution> diversify_step (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance) {
         int steps = 1; //TODO : could be a parameter.
-        int neighborhood_size = 1; //TODO : could be a parameter.
+        int neighborhood_size = 2; //TODO : could be a parameter.
         std::vector<SequenceMetaSolution> output_solutions;
         output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
 

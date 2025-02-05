@@ -81,6 +81,23 @@ bool Sequence::isLexicographicallySmaller(const Sequence& other, const DataInsta
         }
      
     }
+    else if (neighborhood_size == 2) { // reinsertions
+        for (size_t i = 0; i < tasks.size(); i++) {
+            int task = tasks[i];
+            for (size_t j = 0; j < i; j++) { // Insert before i
+                std::vector<int> reinserted = tasks;
+                std::move(reinserted.begin() + j, reinserted.begin() + i, reinserted.begin() + j + 1);
+                reinserted[j] = task;
+                output.push_back(Sequence(reinserted));
+            }
+            for (size_t j = i + 1; j < tasks.size(); j++) { // Insert after i
+                std::vector<int> reinserted = tasks;
+                std::move(reinserted.begin() + i + 1, reinserted.begin() + j + 1, reinserted.begin() + i);
+                reinserted[j] = task;
+                output.push_back(Sequence(reinserted));
+            }
+        }
+    }
     else {
         throw std::runtime_error("Neighborhood_size must be 1 (TODO : implement more sizes)");
         throw std::runtime_error("Neighborhood_size must be 1, 2 or 3.");

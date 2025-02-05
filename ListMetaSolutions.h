@@ -69,6 +69,27 @@ public:
         return metaSolutionPtrs;
     }
 
+    // returns the simplified metasolution that contains only the expressed submetasolutions (same training score)
+    ListMetaSolution<T>* front_sub_metasolutions(Policy * policy = nullptr)   {
+        if (!scored_by){//we have to score it. We can do it now if policy is provided
+            throw std::runtime_error("Solution must be already evaluated.");
+        }
+
+        std::vector<int>unique_indexes;//
+        for (int index : front_indexes) { 
+            if(std::find(unique_indexes.begin(), unique_indexes.end(), index) == unique_indexes.end()) {
+                unique_indexes.push_back(index);//add index if it's not already in
+            }
+        }
+
+        std::vector<T> front_submeta;
+        for (size_t i =0; i< unique_indexes.size() ;i++) { 
+            front_submeta.push_back(metaSolutions[unique_indexes[i]]);
+        }
+        return new ListMetaSolution<T>(front_submeta);
+    }
+
+
     // print method
     void print() const override{
         //std::cout << "ListMetaSolution contains " << metaSolutions.size() << " meta-solutions:\n\t";
