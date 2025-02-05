@@ -13,6 +13,9 @@ public:
     virtual ~ListMetaSolutionBase() {}
     virtual std::vector<MetaSolution*> get_meta_solutions() const = 0;
     virtual void remove_meta_solution_index(size_t index)  = 0;
+    
+    std::vector<int> front_indexes; //index of the metasolution (in the list) used for each scenario
+
 };
 
 template <typename T>
@@ -32,12 +35,16 @@ public:
         metaSolutions.push_back(metaSolution);
     }*/
 
+   //WARNING : removes the element and also moves around things! COuld be a problem 
+   // In BO, we save index and do the removals again in the same order so it yields same output.
     void remove_meta_solution_index(size_t index)  override {
         if (index >= metaSolutions.size()) {
             throw std::out_of_range("Index out of range");
         }
-        metaSolutions.erase(metaSolutions.begin() + index);
-        reset_evaluation();
+        //metaSolutions.erase(metaSolutions.begin() + index);
+        metaSolutions[index] = metaSolutions.back();
+        metaSolutions.pop_back();
+        reset_evaluation(); //here we could be more cleverer : the sequence/index used in each scenario ony changes if it was removed. update_evaluation(int removed_index)
     }
 
     //call when modifying solution in place, removes evaluated tag to re trigger evaluation.
@@ -46,13 +53,14 @@ public:
         score = -1;
         scores.clear();
         front_sequences.clear();
+        front_indexes.clear();
     }
 
     const std::vector<T>& get_meta_solutions_typed() const {
         return metaSolutions;
     }
     
-    // Method to access the list of meta-solutions
+    // Method to access the list of meta-solutions 
     std::vector<MetaSolution*> get_meta_solutions() const override {
         std::vector<MetaSolution*> metaSolutionPtrs;
         for (T& solution : metaSolutions) { 

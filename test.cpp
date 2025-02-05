@@ -11,7 +11,7 @@
 
 
 int main() {
-    DataInstance instance("instances/test20.data");
+    DataInstance instance("instances/test50.data");
     instance.print();
     FIFOPolicy fifo; //defining policy
     std::cout << std::endl << std::endl;
@@ -20,9 +20,9 @@ int main() {
 
     StreamlinedAlgorithm slalgo(&fifo);
     MetaSolution* slalgo_output = slalgo.solve(instance);
-    std::cout<<"bestof output : ";
+    /*std::cout<<"bestof output : ";
     slalgo_output->print();
-    std::cout<<"Score : " << fifo.evaluate_meta(*slalgo_output, instance) << std::endl; 
+    std::cout<<"Score : " << fifo.evaluate_meta(*slalgo_output, instance) << std::endl; */
 
     std::cout<<"\n\nTEST END\n";  
     return 0;

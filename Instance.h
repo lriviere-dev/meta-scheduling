@@ -10,7 +10,7 @@ class DataInstance { // Instance data : bunch of scenarios
 public:
     int N; //number of tasks
     int S; // number of scenarios in data
-    std::vector<std::vector<int>> precedenceConstraints;
+    std::vector<uint8_t> precedenceConstraints;
     std::vector<int> durations;
     std::vector<std::vector<int>> releaseDates;
     std::vector<int> dueDates;
@@ -30,13 +30,13 @@ public:
         std::getline(file, line); //eat spacing line
 
         // Read precedence constraints
-        precedenceConstraints.resize(N, std::vector<int>(N, 0));
+        precedenceConstraints.resize(N * N);
         for (int i = 0; i < N; ++i) {
             std::getline(file, line);
             ss.clear();
             ss.str(line);
             for (int j = 0; j < N; ++j) {
-                ss >> precedenceConstraints[i][j];
+                ss >> precedenceConstraints[i*N+j];
             }
         }
 
@@ -77,6 +77,11 @@ public:
         file.close();
     }
 
+    //more convenient getter for prec constraints
+    inline bool get_prec(int t1, int t2) const {
+        return precedenceConstraints[t1 * N + t2];
+    }
+
     void print() const {
         std::cout << "Number of tasks: " << N << std::endl;
         std::cout << "Number of scenarios: " << S << std::endl;
@@ -84,7 +89,7 @@ public:
         std::cout << "Precedence constraints:" << std::endl;
         for (int i=0;i<N;i++) {
             for (int j=0;j<N;j++) {
-                if(precedenceConstraints[i][j] == 1) {
+                if(precedenceConstraints[i*N+j] == 1) {
                     std::cout << i << "->" << j << std::endl;
                 }
             }

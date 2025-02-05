@@ -7,6 +7,7 @@
 #include "Instance.h"
 #include <ilcp/cp.h>
 #include <regex>
+#include <unordered_set>
 
 //Algorithm take an instance and converti it to a meta solution. Only for instances of 1P.
 
@@ -72,7 +73,7 @@ public:
         // Problem parameters declaration
         int nbJobs = instance.N;
         int nbScenarios = instance.S;
-        std::vector<std::vector<int>> prec = instance.precedenceConstraints;
+        std::vector<uint8_t> prec = instance.precedenceConstraints;
         std::vector<int> dueDate = instance.dueDates;
         std::vector<std::vector<int>> releaseDate= instance.releaseDates;
         std::vector<int> duration = instance.durations;
@@ -104,7 +105,7 @@ public:
             //Setting precedence constraints
             for (int i=0;i<nbJobs;i++) { //for each pair of Jobs
                 for (int j = 0; j < nbJobs; j++) {
-                    if(prec[i][j] == 1) { // if precedence constraint
+                    if(prec[i*instance.N+j] == 1) { // if precedence constraint
                         for (int s=0;s<nbScenarios;s++) { //enforce for each scenario, but it would suffice to do it for one scenario.;
                             model.add(IloEndBeforeStart(env, Jobs[s][i], Jobs[s][j])); //add precedence constranit
                         }
@@ -171,8 +172,8 @@ public:
     }
 
     //there is probably a memory leak in there. But at least I'm not deleting things I want to keep.
-    //WARNING : the following function (solve_savesteps) is a copy of "solve", that returns a list of solutions instead.
-    //modifications to solve should be implemented in solve_savesteps also.
+    //WARNING : the following function (solve_savesteps) is a copy of "solve".
+    //modifications to the EW algo should be implemented in solve_savesteps also.
     MetaSolution* solve(const DataInstance& instance) override {
         // Ensure the poicy is set
         if (!policy) {
@@ -197,11 +198,12 @@ public:
 
         // Main loop: merge groups while improvement exists
         bool improvement = true;
-        int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
         while (improvement) { //&& !timeLimitExceeded(startTime)
             improvement = false;
+
+
             //setup default values
-            //int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
+            int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance); //virtual candidate score to beat
             int bestCandidatelargestGroupSize = currentSolution->largest_group_size();
             int bestCandidateMergeId =-1;
 
@@ -227,7 +229,6 @@ public:
             }
             if (improvement && bestCandidateMergeId != -1) {
                 GroupMetaSolution* oldSolution = currentSolution; // Save the old pointer
-                bestCandidateScore = oldSolution->score; //saves us an evaluation of the copy
                 currentSolution = currentSolution->merge_groups(bestCandidateMergeId); // Get the new solution
                 delete oldSolution; // Delete the old solution            
             }
@@ -240,7 +241,8 @@ public:
     //WARNING : this is a copy of the solve function, modified to return intermediate solutions aswell.
     //there may be a more update-friendly way to do this.
     //I didn't implement the small optimization of saving the old solution score because if we save all solutions we are gonna evaluate it at some point anyway.
-    std::vector<MetaSolution*> solve_savesteps(const DataInstance& instance) {
+    // saves the steps in the unordered set, does not return anything
+    void solve_savesteps(const DataInstance& instance, std::unordered_set<GroupMetaSolution>& metaSet) {
         // Ensure the poicy is set
         if (!policy) {
             throw std::runtime_error("Policy must be set before running the algorithm.");
@@ -249,8 +251,6 @@ public:
         if (!initial_solution) {
             throw std::runtime_error("Initial solution must be set before running the algorithm.");
         }
-
-        std::vector<MetaSolution*> accu;
 
         GroupMetaSolution* currentSolution = nullptr;
 
@@ -268,9 +268,14 @@ public:
         // Main loop: merge groups while improvement exists
         bool improvement = true;
         while (improvement) { //&& !timeLimitExceeded(startTime)
-            accu.push_back(currentSolution);// save current solution
 
             improvement = false;
+
+            if (metaSet.find(*currentSolution) != metaSet.end()){ //check if already explored this solution
+                break;//stop exploration completely
+            }
+            metaSet.insert(*currentSolution);// else, save current step and continue 
+
             int bestCandidateScore = policy->evaluate_meta(*currentSolution, instance);
             int bestCandidatelargestGroupSize = currentSolution->largest_group_size();
             int bestCandidateMergeId =-1;
@@ -302,8 +307,6 @@ public:
             }
 
         }
-
-        return accu; // Return the steps taken including start (sequence-like) and the endpoint (output of solve)
     }
 
 private:

@@ -19,14 +19,14 @@ void Sequence::print() const {
 //checks precedence validity
 bool Sequence::check_precedence_constraints(const DataInstance& instance) const {
     const std::vector<int>& tasks = get_tasks();
-    const std::vector<std::vector<int>>& precedenceConstraints = instance.precedenceConstraints;
+    const std::vector<uint8_t>& precedenceConstraints = instance.precedenceConstraints;
 
 
     // Check each precedence constraint
     // Check each pair (i, j) where precedenceConstraints[i][j] == 1
     for (size_t i = 0; i < tasks.size()-1; ++i) {
         for (size_t j = i+1; j < tasks.size(); ++j) {
-            if (precedenceConstraints[tasks[j]][tasks[i]] == 1) {
+            if (precedenceConstraints[tasks[j]*instance.N+tasks[i]] == 1) {
                 // Task j must precede task i, but it doesn't
                 return false;
             }

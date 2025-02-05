@@ -38,6 +38,7 @@ public:
 
             //special case if metasol is a list of metasol, we recursively have to make sure to evaluate the underlying before
             if (ListMetaSolutionBase* listMeta = dynamic_cast<ListMetaSolutionBase*>(&metasol)) {
+                listMeta->front_indexes.resize(instance.S); //instanciate the indexes of front, is filled in "extract sequence"
                 for (auto submeta : listMeta->get_meta_solutions()){
                     if (!submeta->scored_by){ //sub metasolution wasn't scored : evaluate it
                         this->evaluate_meta(*submeta,instance);
@@ -58,7 +59,7 @@ public:
                 int cost = schedule.evaluate(instance);
                 //set metasol data
                 metasol.scores.push_back(cost);
-                metasol.front_sequences.push_back(seq);                
+                metasol.front_sequences.push_back(seq); 
                 // Update the maximum cost
                 if (cost > maxCost) {
                     maxCost = cost;

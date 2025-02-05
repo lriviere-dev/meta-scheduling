@@ -24,12 +24,26 @@ public:
     Policy * scored_by = nullptr;
 };
 
+
 // GroupMetaSolution: A specific meta solution that stores a sequence of permutable groups
 class GroupMetaSolution : public MetaSolution {
 public:
     // Constructor: Takes a sequence of sets of tasks
     GroupMetaSolution(std::vector<std::vector<int>>& taskGroups)
         : taskGroups(taskGroups) {}
+
+     //operator to check groupSolution equality, could be faster if groups were sorted by default 
+    bool operator==(const GroupMetaSolution& other) const {
+        if (taskGroups.size() != other.taskGroups.size()) return false;
+        for (size_t i = 0; i < taskGroups.size(); ++i) {
+            std::vector<int> group1 = taskGroups[i];
+            std::vector<int> group2 = other.taskGroups[i];
+            std::sort(group1.begin(), group1.end());
+            std::sort(group2.begin(), group2.end());
+            if (group1 != group2) return false;
+        }
+        return true;
+    }
 
     void print() const override{
         for (size_t i = 0; i < taskGroups.size(); ++i) {
@@ -84,7 +98,11 @@ public:
     }
 
     // Method to get the sequence of task groups (sets of tasks) (private)
-    std::vector<std::vector<int>>& get_task_groups() {
+    const std::vector<std::vector<int>>& get_task_groups() const{
+        return taskGroups;
+    }
+
+    std::vector<std::vector<int>>& get_task_groups_modifiable(){
         return taskGroups;
     }
 
@@ -132,6 +150,24 @@ private:
     std::vector<std::vector<int>> taskGroups; // A sequence of sets of tasks
 };
 
+//introducing hashes for groupMetaSolutions
+namespace std {
+    template <>
+    struct hash<GroupMetaSolution> {
+        size_t operator()(const GroupMetaSolution& gms) const { // Add `const`
+            size_t hash_value = 0;
+            for (const auto& group : gms.get_task_groups()) {
+                std::vector<int> sorted_group = group;
+                std::sort(sorted_group.begin(), sorted_group.end());
+                for (int task : sorted_group) {
+                    hash_value ^= std::hash<int>{}(task) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+                }
+                hash_value ^= 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+            }
+            return hash_value;
+        }
+    };
+}
 
 // The simple sequence (JSEQ)
 class SequenceMetaSolution:  public MetaSolution {

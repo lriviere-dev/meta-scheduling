@@ -22,14 +22,14 @@ Sequence FIFOPolicy::extract_sequence(MetaSolution& metaSolution, const DataInst
         const auto& releaseDates = instance.releaseDates[scenario_id];
 
         // Iterate over groups in order
-        for (auto& group : groupMeta->get_task_groups()) {
+        for (auto& group : groupMeta->get_task_groups_modifiable()) {
             // Sort tasks in the group by release date, with ties going to lexicographical order
             std::sort(group.begin(), group.end(), [&instance,&releaseDates](int t1, int t2) {
                 //first, check precedence constraints
-                if (instance.precedenceConstraints[t1][t2]){
+                if (instance.get_prec(t1,t2)){
                     return true;
                 }
-                if (instance.precedenceConstraints[t2][t1]){
+                if (instance.get_prec(t2,t1)){
                     return false;
                 }
                 //then, release dates
@@ -56,12 +56,14 @@ Sequence FIFOPolicy::extract_sequence(MetaSolution& metaSolution, const DataInst
     //we assume the underlying metasolutions have already been scored by the policy
     else if (auto* listMeta = dynamic_cast< ListMetaSolutionBase*>(&metaSolution)) {
         const auto& metaSolutions = listMeta->get_meta_solutions();
-        Sequence minSeq = metaSolutions[0]->front_sequences[scenario_id]; // Initialize with the first sequence
+        Sequence minSeq = metaSolutions[0]->front_sequences[scenario_id]; // Initialize with the first sequence/metasol
+        listMeta->front_indexes[scenario_id] = 0;
 
         for (size_t i = 1; i < metaSolutions.size(); ++i) {  // Iterate from second element
             auto& seq = metaSolutions[i]->front_sequences[scenario_id];
             if (seq.isLexicographicallySmaller(minSeq, instance, scenario_id)) {
                 minSeq = seq;
+                listMeta->front_indexes[scenario_id] = i;//update index of metasol used in that scenario
             }
         }
         output = std::move(minSeq); 
@@ -75,7 +77,6 @@ Sequence FIFOPolicy::extract_sequence(MetaSolution& metaSolution, const DataInst
 }
 
 //finds the index of the metasolution (in the list of metasolution) that is used in a given scenario.
-//TODO work could be avoided by saving it along front. (would also have to update when removing a sequence)
 int FIFOPolicy::extract_sub_metasolution_index(const MetaSolution& metasol, const DataInstance& instance, int scenario_id) const {
     
     //assert list solution
@@ -86,19 +87,8 @@ int FIFOPolicy::extract_sub_metasolution_index(const MetaSolution& metasol, cons
     //asssert metasol was scored
     if (!metasol.scored_by) {
         throw std::runtime_error("metasol should already be scored by a policy");
-    }
-    Sequence minSeq = listMetaSolution->get_meta_solutions()[0]->front_sequences[scenario_id]; // Initialize with the first sequence
-    int minIndex = 0;
-
-    for (size_t i=0 ; i < listMetaSolution->get_meta_solutions().size(); i++) {
-        Sequence seq = listMetaSolution->front_sequences[scenario_id];
-        if (seq.isLexicographicallySmaller(minSeq, instance, scenario_id)) {
-            minSeq = seq; 
-            minIndex = i; 
-        }
-    }
-    
-    return minIndex; // Return the index of the metasolution in the list that outputs the min sequence    
+    }    
+    return listMetaSolution->front_indexes[scenario_id]; // Return the index of the metasolution in the list that outputs the min sequence    
 }
 
 

@@ -39,31 +39,31 @@ public:
         AllSolutionsSeq.push_back(*(dynamic_cast<SequenceMetaSolution*>(jseq_solution)));
         std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step(AllSolutionsSeq, instance);
         std::cout << "\n" << "Step 3 : Diversify -> ok" << std::endl;
-        std::cout << "Number of JSEQ solutions : "<< diversifiedSeq.size() << std::endl;
+        std::cout << "Number of diversified JSEQ solutions : "<< diversifiedSeq.size() << std::endl;
 
         //BestOf on the set of JSEQ solutions
         BestOfAlgorithm<SequenceMetaSolution> bestof_jseq(policy);
         ListMetaSolution<SequenceMetaSolution> listseqmetasol(diversifiedSeq);
 
-        //std::cout << "DEBUG print of the output of diversify : "<< std::endl;
-        //listseqmetasol.print();
-        //std::cout << std::endl;
+        std::cout << "DEBUG print of the output of diversify : "<< std::endl;
+        listseqmetasol.print();
+        std::cout << std::endl;
 
         bestof_jseq.set_initial_solution(listseqmetasol);
         MetaSolution* sjseq_solution = bestof_jseq.solve(instance); // Third output : THE SJSEQ SOLUTION derived from the set of JSEQ solutions
         std::cout << "\n" << "Step 4 : Bestof JSEQ -> ok" << std::endl;
         std::cout << "Number of JSEQ kept : "<< (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->get_meta_solutions().size() << std::endl;
+        std::cout << "Number of diversified JSEQ solutions : "<< diversifiedSeq.size() << std::endl;
 
         //Esswein on the set of JSEQ solutions (and keep intermediate solutions)
         std::vector<GroupMetaSolution> AllSolutionsGroup;
+        std::unordered_set<GroupMetaSolution> metaSet;
+
         for (size_t i=0; i<diversifiedSeq.size();i++){ 
             EWSolver.set_initial_solution(diversifiedSeq[i]);
-            std::vector<MetaSolution*> ewsols = EWSolver.solve_savesteps(instance);
-            for (size_t j = 0; j<ewsols.size(); j++) 
-            {  
-                AllSolutionsGroup.push_back(*(dynamic_cast<GroupMetaSolution*>(ewsols[j])));
-            }
+            EWSolver.solve_savesteps(instance, metaSet);
         }
+        AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());
         std::cout << "\n" << "Step 5 : EWSolver on the diversified solutions -> ok" << std::endl;
         std::cout << "Number of resulting GSEQ : "<< AllSolutionsGroup.size() << std::endl;
 
@@ -80,6 +80,7 @@ public:
         MetaSolution* sgseq_solution = bestof_gseq.solve(instance); // Fourth output : THE SGSEQ SOLUTION derived from the set of GSEQ solutions
         std::cout << "\n" << "Step 6 : BestOf on GSEQs -> ok" << std::endl;
         std::cout << "Number of GSEQ kept : "<< (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->get_meta_solutions().size() << std::endl;
+        std::cout << std::endl;
 
         // Print the 4 solutions reached
         std::vector<MetaSolution*> outputs = {jseq_solution, gseq_solution, sjseq_solution, sgseq_solution};
