@@ -12,7 +12,7 @@ Schedule::Schedule(std::vector<int> startTimesArray) : startTimes(startTimesArra
 // For now implemented type is max sumci.
 // note that feasibility is not checked.
 int Schedule::evaluate(const DataInstance& instance) {
-    // A schedule is evaluated for an instance with a single scenario
+    // A schedule is evaluated for an instance (scenario is irrelevant, feasibility isn't checked)
     // feasibility (precedences, overlap, release dates) is assumed
     
     if (instance.N != startTimes.size()) {

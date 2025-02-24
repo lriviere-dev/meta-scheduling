@@ -5,9 +5,14 @@
 #include <vector>
 #include <fstream>
 #include <sstream>
+#include <stdexcept>
+#include <random>
+#include <algorithm>
+#include <numeric>
 
 class DataInstance { // Instance data : bunch of scenarios
 public:
+    std::string file_name;
     int N; //number of tasks
     int S; // number of scenarios in data
     std::vector<uint8_t> precedenceConstraints;
@@ -15,12 +20,17 @@ public:
     std::vector<std::vector<int>> releaseDates;
     std::vector<int> dueDates;
 
+    DataInstance() {} //empty constructor
+
+
     DataInstance(const std::string& filename) { //constructor : reads from data file
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cerr << "Unable to open file" << std::endl;
             return;
         }
+
+        file_name = filename;
 
         std::string line;
         std::getline(file, line);
@@ -36,7 +46,10 @@ public:
             ss.clear();
             ss.str(line);
             for (int j = 0; j < N; ++j) {
-                ss >> precedenceConstraints[i*N+j];
+                //ss >> precedenceConstraints[i*N+j]; //DOES NOT work with the uint8_t type, conversion fucks up
+                char c;
+                ss >> c;  // Read as char ('0' or '1')
+                precedenceConstraints[i * N + j] = c - '0'; // Convert to binary 0 or 1
             }
         }
 
@@ -75,11 +88,12 @@ public:
             ss >> dueDates[i];
         }
         file.close();
+
     }
 
     //more convenient getter for prec constraints
-    inline bool get_prec(int t1, int t2) const {
-        return precedenceConstraints[t1 * N + t2];
+    inline bool get_prec(int task1, int task2) const {
+        return precedenceConstraints[task1 * N + task2];
     }
 
     void print() const {
@@ -114,6 +128,59 @@ public:
             std::cout << dueDate << " ";
         }
         std::cout << std::endl;
+    }
+
+    void print_summary() const {
+        std::cout << "Number of tasks: " << N << std::endl;
+        std::cout << "Number of scenarios: " << S << std::endl;
+
+        int c= 0;
+        for (int i=0;i<N;i++) {
+            for (int j=0;j<N;j++) {
+                if(precedenceConstraints[i*N+j] == 1) {
+                    c++; //;)
+                }
+            }
+        }
+        std::cout << "Precedence constraints: " << c << " i.e " << static_cast<double>(c)*2/(N*N) << std::endl;
+    }
+
+    std::pair<DataInstance, DataInstance> SampleSplitScenarios(int k, std::mt19937 &rng) {
+        // Check that k is not larger than the available number of scenarios.
+        if (k > S) {
+            throw std::runtime_error("Cannot sample more scenarios than are available in the instance.");
+        }
+
+        // Create a vector with indices 0, 1, ..., instance.S - 1.
+        std::vector<int> indices(S);
+        std::iota(indices.begin(), indices.end(), 0);
+
+        // Shuffle the indices using a random number generator.
+        std::shuffle(indices.begin(), indices.end(), rng);
+
+        // Create copies for training and testing instances.
+        DataInstance trainInstance = *this;
+        DataInstance testInstance = *this;
+
+        // Set the number of scenarios in each instance.
+        trainInstance.S = k;
+        testInstance.S = S - k;
+
+        // Clear and resize releaseDates for both instances.
+        trainInstance.releaseDates.clear();
+        trainInstance.releaseDates.reserve(k);
+        testInstance.releaseDates.clear();
+        testInstance.releaseDates.reserve(S - k);
+
+        // Assign scenarios based on shuffled indices.
+        for (int i = 0; i < k; ++i) {
+            trainInstance.releaseDates.push_back(releaseDates[indices[i]]);
+        }
+        for (int i = k; i < S; ++i) {
+            testInstance.releaseDates.push_back(releaseDates[indices[i]]);
+        }
+
+        return {trainInstance, testInstance};
     }
 };
 

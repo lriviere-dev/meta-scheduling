@@ -23,8 +23,13 @@ public:
         this->policy = policy;
     }
 
+    void setMaxTime(int max_time) {
+        this->max_time = max_time;
+    }
+
 protected:
     Policy* policy; // Reference to a Policy object for evaluating solutions
+    int max_time; // maximum running time for the algorithm (when relevant)
 };
 
 //subclass of algorithm require a starting solution
@@ -62,10 +67,16 @@ public:
     }
 };
 
+
 class JSEQSolver : public Algorithm {
 public:
     JSEQSolver(Policy* policy) {
         this->policy = policy; // Use the policy provided during initialization
+    }
+
+    JSEQSolver(Policy* policy, int max_time) {
+        this->policy = policy; // Use the policy provided during initialization
+        this->max_time = max_time;
     }
 
     MetaSolution* solve(const DataInstance& instance) override{
@@ -80,7 +91,7 @@ public:
 
         char name[32]; // dummy variable to temporarily store name of elements
         std::vector<int> final_solution;
-        int limit_time = 10; // max solve time in seconds
+        int limit_time = max_time; // max solve time in seconds
 
         //Create environment, model problem
         IloEnv env;
@@ -139,17 +150,18 @@ public:
             //Search for a solution
             if (cp.solve()) {
                 cp.out() << "Obj Value: " << cp.getObjValue() << std::endl;
+                cp.out() << "Gap Value: " << cp.getObjGap() << std::endl;
                 cp.out() << "Solve status: " << cp.getStatus() << std::endl;
-                cp.out() << "Solution: ";
+                //cp.out() << "Solution: ";
 
                 for(IloIntervalVar a = cp.getFirst(sequences[0]); a.getImpl()!=0; a = cp.getNext(sequences[0], a)){
-                    cp.out() <<  a.getName() << "*"; //cp.domain(a)
+                    //cp.out() <<  a.getName() << "*"; //cp.domain(a)
                     std::string temp(a.getName());
                     std::string task_number_str= temp.substr(4, temp.find(',') - 4); // Output: 2                   
                     final_solution.push_back(std::atoi(task_number_str.c_str()));
                     //cp.out() << cp.domain(a) << std::endl;
                     }
-                cp.out() <<  std::endl; //cp.domain(a)
+                //cp.out() <<  std::endl; //cp.domain(a)
             } else {
                 cp.out() << "No solution found. " << std::endl;
             }
@@ -310,6 +322,69 @@ public:
     }
 
 private:
+
+};
+
+class SwapDescent : public SecondStageAlgorithm{
+public:
+    SwapDescent(Policy* policy) {
+        this->policy = policy; // Use the policy provided during initialization
+    }
+
+    MetaSolution* solve(const DataInstance& instance) override {
+        // Ensure the poicy is set
+        if (!policy) {
+            throw std::runtime_error("Policy must be set before running the algorithm.");
+        }
+        // Ensure the initial sol is set
+        if (!initial_solution) {
+            throw std::runtime_error("Initial solution must be set before running the algorithm.");
+        }
+        SequenceMetaSolution* currentSolution = dynamic_cast<SequenceMetaSolution*>(initial_solution);
+
+        if (!currentSolution) {
+            throw std::runtime_error("Initial solution is not of type SequenceMetaSolution!");
+        }
+
+        int max_steps =1000;
+        int step =0;
+        // Main loop: swap while improvement exists
+        bool improvement = true;
+        int bestScore = policy->evaluate_meta(*currentSolution, instance); 
+
+        while (improvement && step<max_steps) { 
+            step++;
+            improvement = false;
+
+            for (int i = 0; i < instance.N-1; i++) { // for each possible swap index
+                try {
+                    // Generate a new candidate solution
+                    SequenceMetaSolution* candidate = currentSolution->gen_swap_neighbor(i, instance); 
+                    if (!candidate) {
+                        continue; // Skip if the candidate is invalid
+                    }
+
+                    int candidate_score = policy->evaluate_meta(*candidate, instance);
+                    if (candidate_score < bestScore) {
+                        bestScore = candidate_score;
+                        if (currentSolution != initial_solution) {
+                            delete currentSolution; // Delete if dynamically allocated
+                        }                        
+                        currentSolution = candidate;  // Update to the new solution
+                        improvement = true;
+                        break;
+                    } else {
+                        delete candidate; // Clean up the candidate if not used
+                    }
+                }
+                catch (InvalidSolutionException ise) {
+                    // Handle invalid solution exception gracefully
+                }
+            }
+        }
+
+        return currentSolution;  // Return the final solution
+        }
 
 };
 

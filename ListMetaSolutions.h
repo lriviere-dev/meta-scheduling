@@ -1,11 +1,12 @@
 #ifndef LIST_META_H
 #define LIST_META_H
 
+class Policy;
+
 #include "Policy.h"
 #include "MetaSolutions.h"
 #include <vector>
 #include <iostream>
-
 
 //necessary intermediate step to handle different types of ListMetaSolution as one
 class ListMetaSolutionBase : public MetaSolution {
@@ -14,6 +15,16 @@ public:
     virtual std::vector<MetaSolution*> get_meta_solutions() const = 0;
     virtual void remove_meta_solution_index(size_t index)  = 0;
     
+    //call when modifying solution in place, removes evaluated tag to re trigger evaluation.
+    void reset_evaluation() override { // has more things to do than default metasolution re-evaluation
+        scored_by = nullptr;
+        scored_for = nullptr;
+        score = -1;
+        scores.clear();
+        front_sequences.clear();
+        front_indexes.clear(); //also needs to clear this information
+    }
+
     std::vector<int> front_indexes; //index of the metasolution (in the list) used for each scenario
 
 };
@@ -47,14 +58,6 @@ public:
         reset_evaluation(); //here we could be more cleverer : the sequence/index used in each scenario ony changes if it was removed. update_evaluation(int removed_index)
     }
 
-    //call when modifying solution in place, removes evaluated tag to re trigger evaluation.
-    void reset_evaluation()  {
-        scored_by = nullptr;
-        score = -1;
-        scores.clear();
-        front_sequences.clear();
-        front_indexes.clear();
-    }
 
     const std::vector<T>& get_meta_solutions_typed() const {
         return metaSolutions;
@@ -69,23 +72,31 @@ public:
         return metaSolutionPtrs;
     }
 
-    // returns the simplified metasolution that contains only the expressed submetasolutions (same training score)
-    ListMetaSolution<T>* front_sub_metasolutions(Policy * policy = nullptr)   {
-        if (!scored_by){//we have to score it. We can do it now if policy is provided
-            throw std::runtime_error("Solution must be already evaluated.");
+    // returns the simplified metasolution that contains only the expressed submetasolutions
+    // takes an instance as input, outputs the front for that instance.  (same training score if it's the training instance eg)
+    ListMetaSolution<T>* front_sub_metasolutions(Policy * policy, const DataInstance &instance)   {
+        if (!scored_by){//metasol was not already scored -> score it before continuing
+            policy->evaluate_meta(*this, instance);
+        }
+        else if (scored_by!=policy || scored_for!=&instance){ // else if it is scored but not by this policy, or not for this instance
+            reset_evaluation(); //reset it and then score
+            policy->evaluate_meta(*this, instance);
         }
 
-        std::vector<int>unique_indexes;//
-        for (int index : front_indexes) { 
+        //once it's properly evaluated and scored, extract the front
+        std::vector<int> unique_indexes;//
+        for (int index : front_indexes) {  // check all the front indexes ( indexes of submetasol used in each scenarios)
             if(std::find(unique_indexes.begin(), unique_indexes.end(), index) == unique_indexes.end()) {
-                unique_indexes.push_back(index);//add index if it's not already in
+                unique_indexes.push_back(index);//add index if it's not in output list already
             }
         }
-
+        std::sort(unique_indexes.begin(),unique_indexes.end());//for convenience of debugging, we sort. THis has no effect on the training results, but does on the shape on the metasolution
+        
         std::vector<T> front_submeta;
         for (size_t i =0; i< unique_indexes.size() ;i++) { 
             front_submeta.push_back(metaSolutions[unique_indexes[i]]);
         }
+
         return new ListMetaSolution<T>(front_submeta);
     }
 

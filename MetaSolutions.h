@@ -19,9 +19,19 @@ public:
     //following attributes save scores and sequences for efficiency purposes. Note that ultimately, they depend on a policy, which is ssumed to be unique here.
     std::vector<Sequence> front_sequences; // front of the metasolution : the sequence expressed for each scenario
     std::vector<int> scores; //scores of the expressed sequence in each scenario.
-    int score; //the aggregated score
+    int score = -1; //the aggregated score
     //is set and marked by policy when evaluated for the first time
     Policy * scored_by = nullptr;
+    const DataInstance * scored_for = nullptr;
+
+    virtual void reset_evaluation() { // resets the evaluation to call again (with other policy, or other instance.)
+        scored_by = nullptr;
+        scored_for = nullptr;
+        score = -1;
+        scores.clear();
+        front_sequences.clear();
+    }
+
 };
 
 
@@ -72,8 +82,8 @@ public:
         // Merge the selected group with the next group
         merged_groups[group_index].insert(
             merged_groups[group_index].end(),
-            merged_groups[group_index + 1].begin(),
-            merged_groups[group_index + 1].end()
+            std::make_move_iterator(merged_groups[group_index + 1].begin()),
+            std::make_move_iterator(merged_groups[group_index + 1].end())
         );
 
         // Remove the next group as it's now merged
@@ -188,6 +198,17 @@ public:
 
         return new GroupMetaSolution(vectorgroup);
     }
+    SequenceMetaSolution* gen_swap_neighbor(int swap_index, const DataInstance& instance){
+        Sequence seq =  this->get_sequence();
+        Sequence swaped =  seq.gen_swap_neighbor(swap_index);
+        if (swaped.check_precedence_constraints(instance)){
+            return new SequenceMetaSolution(swaped);
+        }
+        else{
+            throw InvalidSolutionException();
+        }
+    }
+
     std::vector<SequenceMetaSolution> gen_neighbors(int neighborhood_size, const DataInstance& instance){//generates list of nighboring JSEQ solutions (defers to sequence neighborhood)
         std::vector<SequenceMetaSolution> output;
         std::vector<Sequence> neighboring_sequences = taskSequence.neighbours(neighborhood_size);

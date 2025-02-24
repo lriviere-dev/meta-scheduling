@@ -6,25 +6,11 @@
 #include "MetaSolutions.h"
 #include "ListMetaSolutions.h"
 #include "Algorithms.h"
-#include "StreamlinedAlgorithm.h"
 #include "BestOfAlgorithm.h"
+#include "Ideal.h"
 
 
-int main() {
-    DataInstance instance("instances/test20.data");
-    instance.print();
-    FIFOPolicy fifo; //defining policy
-    std::cout << std::endl << std::endl;
-
-    std::cout << std:: endl << "==== SL ALGO TEST ===" << std::endl;
-
-    StreamlinedAlgorithm slalgo(&fifo);
-    MetaSolution* slalgo_output = slalgo.solve(instance);
-    /*std::cout<<"bestof output : ";
-    slalgo_output->print();
-    std::cout<<"Score : " << fifo.evaluate_meta(*slalgo_output, instance) << std::endl; */
-
-    std::cout<<"\n\nTEST END\n";  
+int test() {
     return 0;
 }
 
