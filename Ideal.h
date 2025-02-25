@@ -158,10 +158,11 @@ public:
             //std::cout  << "Solving... \n" ;
 
             //Search for a solution
+            cp.out() << "Starting IdealSolver solve. Max time = " << max_time << "s" << std::endl;
             if (cp.solve()) {
-                cp.out() << "Obj Value: " << cp.getObjValue() << std::endl;
-                cp.out() << "Gap Value: " << cp.getObjGap() << std::endl;
-                cp.out() << "Solve status: " << cp.getStatus() << std::endl;
+                cp.out() << "IdealSolver Obj Value: " << cp.getObjValue() << std::endl;
+                cp.out() << "IdealSolver Gap Value: " << cp.getObjGap() << std::endl;
+                cp.out() << "IdealSolver Solve status: " << cp.getStatus() << std::endl;
                 //cp.out() << "Solution: ";
                 for (int s = 0; s<instance.S; s++){
                     std::vector<int> final_s;

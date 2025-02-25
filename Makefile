@@ -1,6 +1,6 @@
 include ./cpohome
 
-CCC = g++ -g
+CCC = g++ -g #-pg 
 CONCERTDIR = $(CPOHOME)/concert
 CPLEXDIR = $(CPOHOME)/cplex
 
@@ -20,6 +20,9 @@ program: $(OBJECTS)
 
 %.o: %.cpp
 	$(CCC) -c $(CFLAGS) $< -o $@
+
+%: %.o
+	$(CCC) -o $@ $< $(LDFLAGS) #compiles the target file
 
 clean:
 	rm -f *.o program

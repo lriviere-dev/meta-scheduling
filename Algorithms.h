@@ -148,10 +148,11 @@ public:
             //std::cout  << "Solving... \n" ;
 
             //Search for a solution
+            cp.out() << "Starting JSEQSolver solve. Max time = " << max_time << "s" << std::endl;
             if (cp.solve()) {
-                cp.out() << "Obj Value: " << cp.getObjValue() << std::endl;
-                cp.out() << "Gap Value: " << cp.getObjGap() << std::endl;
-                cp.out() << "Solve status: " << cp.getStatus() << std::endl;
+                cp.out() << "JSEQSolver Obj Value: " << cp.getObjValue() << std::endl;
+                cp.out() << "JSEQSolver Gap Value: " << cp.getObjGap() << std::endl;
+                cp.out() << "JSEQSolver Solve status: " << cp.getStatus() << std::endl;
                 //cp.out() << "Solution: ";
 
                 for(IloIntervalVar a = cp.getFirst(sequences[0]); a.getImpl()!=0; a = cp.getNext(sequences[0], a)){

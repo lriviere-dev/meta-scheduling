@@ -36,6 +36,26 @@ std::vector<SequenceMetaSolution> diversify_step (std::vector<SequenceMetaSoluti
     return output_solutions;
 }
 
+std::vector<SequenceMetaSolution> diversify_step_random (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance, Policy & policy,  std::mt19937 &rng) {
+    std::vector<SequenceMetaSolution> output_solutions;
+    output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
+    
+    SwapDescent descent(&policy);
+    size_t nb_new = instance.N/2; //simulating similar nb of solution than swap (/2 cause we insert starting random and descended)
+    for (size_t i = 0; i < nb_new; i++)
+    {
+        Sequence rand_seq = Sequence(instance.N, rng);//gen random sequence
+        rand_seq.fix_precedence_constraints(instance); //fix it for prec constraints
+        SequenceMetaSolution rand_seq_meta = SequenceMetaSolution(rand_seq);
+        descent.set_initial_solution(rand_seq_meta);
+        MetaSolution* descended_seq_meta = descent.solve(instance);//descent on it
+        output_solutions.push_back(rand_seq_meta);//add to list
+        output_solutions.push_back(*(dynamic_cast<SequenceMetaSolution*>(descended_seq_meta)));
+    }
+    
+    return output_solutions;
+}
+
 int main(int argc, char* argv[]) {
     // Default parameter values
     std::string file_name = "instances/test.data";  // Default file for tests
@@ -133,6 +153,7 @@ int main(int argc, char* argv[]) {
         std::vector<SequenceMetaSolution> AllSolutionsSeq;
         AllSolutionsSeq.push_back(*(dynamic_cast<SequenceMetaSolution*>(jseq_solution)));
         std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step(AllSolutionsSeq, trainInstance);
+        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_random(AllSolutionsSeq, trainInstance, fifo, rng);
 
         //BO(JSEQ) -> SJSEQ solution
         ListMetaSolution<SequenceMetaSolution> listseqmetasol(diversifiedSeq);
