@@ -77,30 +77,6 @@ Sequence Sequence::fix_precedence_constraints(const DataInstance& instance) cons
     return Sequence(fixed_tasks); 
 }
 
-//compares two sequences to find the preffered one by FIFO in a given scenario 
-//TODO : Warning: should depend on policy ! (the theory here needs to be layed out)
-bool Sequence::isLexicographicallySmaller(const Sequence& other, const DataInstance& instance, int scenario_id) const {
-    const auto& releaseDates = instance.releaseDates[scenario_id]; // Assuming single-machine case
-
-    // Compare task order in sequences
-    for (size_t i = 0; i < tasks.size(); ++i) { 
-        int taskA = tasks[i];
-        int taskB = other.tasks[i];
-
-        if (releaseDates[taskA] != releaseDates[taskB]) {
-            // Earlier release date wins
-            return releaseDates[taskA] < releaseDates[taskB];
-        }
-
-        // If release dates are equal, compare task indices lexicographically
-        if (taskA != taskB) {
-            return taskA < taskB;
-        }
-    }
-
-    // At this point, sequences should be equal. So not strictly smaller
-    return false;
-}
 
 Sequence Sequence::gen_swap_neighbor(int swap_index){
     std::vector<int> swaped = this->get_tasks(); 

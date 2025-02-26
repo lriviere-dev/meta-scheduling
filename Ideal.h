@@ -64,9 +64,20 @@ public:
     }
 
     int extract_sub_metasolution_index(const MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override{
-                    throw std::runtime_error("Should not be called with the IdealPolicy : IdealPolicy only handles IdealMetaSOlutions, not LIstMetaSolutions");
+        throw std::runtime_error("Should not be called with the IdealPolicy : IdealPolicy only handles IdealMetaSOlutions, not LIstMetaSolutions");
+        (void)metaSolution; //warning removal
+        (void)instance; //warning removal
+        (void)scenario_id; //warning removal
     }
-    
+
+    bool isLexicographicallySmaller(const Sequence& seq1, const Sequence& seq2, const DataInstance& instance, int scenario_id)  const override{
+        throw std::runtime_error("Should not be called with the IdealPolicy : IdealPolicy only handles IdealMetaSOlutions, not LIstMetaSolutions");
+        (void)seq1; //warning removal
+        (void)seq2; //warning removal
+        (void)instance; //warning removal
+        (void)scenario_id; //warning removal
+    }
+
 };
 
 class IdealSolver : public Algorithm {

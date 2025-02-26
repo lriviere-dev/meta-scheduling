@@ -158,6 +158,12 @@ public:
         // Shuffle the indices using a random number generator.
         std::shuffle(indices.begin(), indices.end(), rng);
 
+        //print scenarios used for training
+        std::cout << "Training scenarios : ";
+        for (int i =0; i<k-1; i++){std::cout << indices[i] << ", ";}
+        std::cout << indices[k-1] << std::endl;
+
+
         // Create copies for training and testing instances.
         DataInstance trainInstance = *this;
         DataInstance testInstance = *this;

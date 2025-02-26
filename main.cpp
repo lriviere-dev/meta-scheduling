@@ -3,6 +3,7 @@
 #include "Instance.h"
 #include "Sequence.h"
 #include "Policy.h"
+#include "PolicyFifo.h"
 #include "MetaSolutions.h"
 #include "ListMetaSolutions.h"
 #include "Algorithms.h"
@@ -60,7 +61,8 @@ int main(int argc, char* argv[]) {
     // Default parameter values
     std::string file_name = "instances/test.data";  // Default file for tests
     int jseq_time = 10;                     // Time allocated to jseq solver (seconds)
-    int nb_training_scenarios = 5;  //this is the number of training scenarios : S
+    int nb_training_scenarios = 24;  //this is the number of training scenarios : S
+    int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
 
     // Command-line arguments override defaults:
     // Usage: ./program <intParam> <fileName> <doubleParam>
@@ -89,7 +91,8 @@ int main(int argc, char* argv[]) {
     std::cout << std:: endl << "==== Input (or default) parameters ===" << std::endl;
 
     std::cout << "file_name: " << file_name << "\n"
-              << "jseq_time: " << jseq_time << "\n";
+              << "jseq_time: " << jseq_time << "\n"
+              << "sampling_iterations: " << sampling_iterations << "\n";
 
 
     // Start of actual process
@@ -118,10 +121,9 @@ int main(int argc, char* argv[]) {
     MetaSolution* ideal_train_solution, *ideal_test_solution, *fifo_solution, *jseq_solution, *gseq_solution, *sjseq_solution, *sgseq_solution, *clean_sjseq_solution, *clean_sgseq_solution;
     std::unordered_set<GroupMetaSolution> metaSet; //the map allows to not repeat identical EW steps between te different JSEQ. (results kept even for each scenario sampling)
 
-
-    int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
     
     for (int i =0; i< sampling_iterations; i++){
+        std::cout << std:: endl << "\tIteration " << i << std::endl;
         //Splitting instance randomly into training and testing.
         DataInstance trainInstance, testInstance;
         std::tie(trainInstance, testInstance) = instance.SampleSplitScenarios(nb_training_scenarios, rng);
@@ -189,20 +191,21 @@ int main(int argc, char* argv[]) {
         clean_sgseq_solution = (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->front_sub_metasolutions(&fifo, trainInstance);
         std::cout<<"SGSEQ (Front) training score : " << fifo.evaluate_meta(*clean_sgseq_solution, trainInstance) << std::endl; 
         std::cout<<"SGSEQ (Front) testing score : " << fifo.evaluate_meta(*clean_sgseq_solution, testInstance) << std::endl; //note that the "front" of a SGSEQ also should have the same training score, however, there can exists several different fronts, that can behave differently in testing. The front isn't unique
+
+
+        std::cout << std:: endl << "==== Solutions dump ===" << std::endl;
+        //debug solution dumps
+        std::vector<MetaSolution*> outputs = {ideal_train_solution, ideal_test_solution, fifo_solution, jseq_solution, gseq_solution, clean_sjseq_solution, clean_sgseq_solution};
+        for (size_t i = 0; i<outputs.size(); i++){
+            std::cout << "Output " << i << ": " << typeid(*outputs[i]).name() << std::endl;
+            std::cout << "Solution: ";
+            outputs[i]->print();
+            std::cout << std::endl;
+        }
     }
 
-    //Average results etc... TODO
 
-
-    std::cout << std:: endl << "==== Solutions dump ===" << std::endl;
-    //debug solution dumps
-    std::vector<MetaSolution*> outputs = {ideal_train_solution, ideal_test_solution, fifo_solution, jseq_solution, gseq_solution, clean_sjseq_solution, clean_sgseq_solution};
-    for (size_t i = 0; i<outputs.size(); i++){
-        std::cout << "Output " << i << ": " << typeid(*outputs[i]).name() << std::endl;
-        std::cout << "Solution: ";
-        outputs[i]->print();
-        std::cout << std::endl;
-    }
+    std::cout << std:: endl << "==== Experiment end ===" << std::endl;
 
     return 0;
 }
