@@ -57,11 +57,41 @@ std::vector<SequenceMetaSolution> diversify_step_random (std::vector<SequenceMet
     return output_solutions;
 }
 
+std::vector<SequenceMetaSolution> diversify_step_jseq (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance, JSEQSolver & jseqsolver) {
+    
+    int max_size = 100;
+    
+    std::vector<SequenceMetaSolution> output_solutions;
+    output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
+    
+    //solve again using solve_savestep (redundant of course, just for testing purposes)
+    for (MetaSolution* metasol : jseqsolver.solve_steps(instance)){
+        output_solutions.push_back(*(dynamic_cast<SequenceMetaSolution*>(metasol)));
+    }
+
+    // Keep only the last k elements
+    if (output_solutions.size() > max_size) {
+        output_solutions.erase(output_solutions.begin(), output_solutions.begin() + (output_solutions.size() - max_size));
+    }
+    return output_solutions;
+}
+
+std::vector<SequenceMetaSolution> diversify_step_ideal (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance, MetaSolution * ideal_sol) {
+    std::vector<SequenceMetaSolution> output_solutions;
+    output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
+    
+    //solve again using solve_savestep (redundant of course, just for testing purposes)
+    for (Sequence seq : (dynamic_cast<IdealMetaSolution*> (ideal_sol))->get_sequences()){
+        output_solutions.push_back(SequenceMetaSolution(seq));
+    }
+    return output_solutions;
+}
+
 int main(int argc, char* argv[]) {
     // Default parameter values
     std::string file_name = "instances/test.data";  // Default file for tests
     int jseq_time = 10;                     // Time allocated to jseq solver (seconds)
-    int nb_training_scenarios = 24;  //this is the number of training scenarios : S
+    int nb_training_scenarios = 5;  //this is the number of training scenarios : S
     int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
 
     // Command-line arguments override defaults:
@@ -92,6 +122,7 @@ int main(int argc, char* argv[]) {
 
     std::cout << "file_name: " << file_name << "\n"
               << "jseq_time: " << jseq_time << "\n"
+              << "nb_training_scenarios: " << nb_training_scenarios << "\n"
               << "sampling_iterations: " << sampling_iterations << "\n";
 
 
@@ -155,7 +186,16 @@ int main(int argc, char* argv[]) {
         std::vector<SequenceMetaSolution> AllSolutionsSeq;
         AllSolutionsSeq.push_back(*(dynamic_cast<SequenceMetaSolution*>(jseq_solution)));
         std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step(AllSolutionsSeq, trainInstance);
+        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_jseq(AllSolutionsSeq, trainInstance, JseqSolver);
         //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_random(AllSolutionsSeq, trainInstance, fifo, rng);
+        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_ideal(AllSolutionsSeq, trainInstance, ideal_train_solution);
+        std::cout << "number of diversifiedsol jseq :" <<diversifiedSeq.size()<<std::endl;
+        /*for (auto & sol : diversifiedSeq){
+            std::cout << "score :" << fifo.evaluate_meta(sol, trainInstance) <<std::endl;
+            sol.print();
+            std::cout << std::endl;
+            if (!sol.get_sequence().check_precedence_constraints(instance)){throw std::runtime_error("invalid");}
+        }*/
 
         //BO(JSEQ) -> SJSEQ solution
         ListMetaSolution<SequenceMetaSolution> listseqmetasol(diversifiedSeq);
@@ -178,6 +218,17 @@ int main(int argc, char* argv[]) {
             EWSolver.solve_savesteps(trainInstance, metaSet);
         }
         AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());
+        AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(fifo_solution)); //inserting the fifo fully permutable solution to make sure score is at least as good (very likely to be removed by GSEQ)
+        AllSolutionsGroup[AllSolutionsGroup.size()-1].reset_evaluation();
+
+        int best_GSEQ_sofar = 0;
+        for (int k = 0; k<AllSolutionsGroup.size(); k++){
+            if (!AllSolutionsGroup[k].scored_by){fifo.evaluate_meta( AllSolutionsGroup[k], trainInstance);}
+            if (AllSolutionsGroup[k].score <  AllSolutionsGroup[best_GSEQ_sofar].score){best_GSEQ_sofar = k;}
+        }
+        std::cout<<"Best GSEQ training score : " << fifo.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll
+        std::cout<<"Best GSEQ testing score : " << fifo.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], testInstance) << std::endl; 
+
 
         //BO(GSEQ) -> SGSEQ solution
         ListMetaSolution<GroupMetaSolution> listgroupmetasol(AllSolutionsGroup);

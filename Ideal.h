@@ -27,12 +27,17 @@ public:
         return sequences[scenario];
     }
 
+    std::vector<Sequence> get_sequences(){
+        return sequences;
+    }
+
     int instance_S(){
         return instance.S;
     }
 
     void print() const override{
-        for (size_t i = 0; i < sequences.size(); ++i) {
+        if (sequences.size()>=25) {std::cout << "Troncating output (too large)\n";}
+        for (size_t i = 0; i < std::min(static_cast<size_t>(25), sequences.size()); ++i) {
             std::cout << "Sequence for scenario " << i << " : ";
             sequences[i].print();
             std::cout << std::endl;
