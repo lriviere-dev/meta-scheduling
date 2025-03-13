@@ -25,4 +25,4 @@ program: $(OBJECTS)
 	$(CCC) -o $@ $< $(LDFLAGS) #compiles the target file
 
 clean:
-	rm -f *.o program
+	rm -f *.o *.key *.sh program
