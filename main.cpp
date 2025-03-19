@@ -9,6 +9,7 @@
 #include "Algorithms.h"
 #include "BestOfAlgorithm.h"
 #include "Ideal.h"
+#include "Timer.h"
 
 #include <iostream>
 #include <string>
@@ -181,6 +182,7 @@ int main(int argc, char* argv[]) {
         gseq_solution = EWSolver.solve(trainInstance);
         std::cout<<"GSEQ training score : " << fifo.evaluate_meta(*gseq_solution, trainInstance) << std::endl; 
         std::cout<<"GSEQ testing score : " << fifo.evaluate_meta(*gseq_solution, testInstance) << std::endl; 
+        
 
         //Diversify JSEQ solution
         std::vector<SequenceMetaSolution> AllSolutionsSeq;
@@ -200,7 +202,10 @@ int main(int argc, char* argv[]) {
         //BO(JSEQ) -> SJSEQ solution
         ListMetaSolution<SequenceMetaSolution> listseqmetasol(diversifiedSeq);
         bestof_jseq.set_initial_solution(listseqmetasol);
+        {
+        Timer("BO SJSEQ timer");
         sjseq_solution = bestof_jseq.solve(trainInstance); 
+        }
         std::cout<<"SJSEQ training score : " << fifo.evaluate_meta(*sjseq_solution, trainInstance) << std::endl;                 
         std::cout<<"SJSEQ testing score : " << fifo.evaluate_meta(*sjseq_solution, testInstance) << std::endl; 
 
@@ -213,9 +218,12 @@ int main(int argc, char* argv[]) {
 
         //EW diversification 
         std::vector<GroupMetaSolution> AllSolutionsGroup;
+        {
+        Timer("EW step timer");
         for (size_t i=0; i<diversifiedSeq.size();i++){ 
             EWSolver.set_initial_solution(diversifiedSeq[i]);
             EWSolver.solve_savesteps(trainInstance, metaSet);
+        }
         }
         AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());
         AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(fifo_solution)); //inserting the fifo fully permutable solution to make sure score is at least as good (very likely to be removed by GSEQ)
@@ -233,7 +241,10 @@ int main(int argc, char* argv[]) {
         //BO(GSEQ) -> SGSEQ solution
         ListMetaSolution<GroupMetaSolution> listgroupmetasol(AllSolutionsGroup);
         bestof_gseq.set_initial_solution(listgroupmetasol);
+        {
+        Timer("BO SGSEQ timer");
         sgseq_solution = bestof_gseq.solve(trainInstance); 
+        }
         std::cout<<"SGSEQ training score : " << fifo.evaluate_meta(*sgseq_solution, trainInstance) << std::endl; 
         std::cout<<"SGSEQ testing score : " << fifo.evaluate_meta(*sgseq_solution, testInstance) << std::endl; 
 
