@@ -93,7 +93,7 @@ int main(int argc, char* argv[]) {
     std::string file_name = "instances/test.data";  // Default file for tests
     int jseq_time = 10;                     // Time allocated to jseq solver (seconds)
     int nb_training_scenarios = 5;  //this is the number of training scenarios : S
-    int sampling_iterations = 5; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
+    int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
 
     // Command-line arguments override defaults:
     // Usage: ./program <intParam> <fileName> <doubleParam>
