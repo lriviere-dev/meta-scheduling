@@ -142,7 +142,8 @@ public:
                 }
             }
         }
-        std::cout << "Precedence constraints: " << c << " i.e " << static_cast<double>(c)*2/(N*N) << std::endl;
+        std::cout << "Precedence constraints: " << c << std::endl;
+        std::cout << "Precedence constraints ratio: " << static_cast<double>(c)*2/(N*N) << std::endl;
     }
 
     std::pair<DataInstance, DataInstance> SampleSplitScenarios(int k, std::mt19937 &rng) {

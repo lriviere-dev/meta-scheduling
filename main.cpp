@@ -92,8 +92,8 @@ int main(int argc, char* argv[]) {
     // Default parameter values
     std::string file_name = "instances/test.data";  // Default file for tests
     int jseq_time = 10;                     // Time allocated to jseq solver (seconds)
-    int nb_training_scenarios = 5;  //this is the number of training scenarios : S
-    int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
+    int nb_training_scenarios = 2;  //this is the number of training scenarios : S
+    int sampling_iterations = 3; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
 
     // Command-line arguments override defaults:
     // Usage: ./program <intParam> <fileName> <doubleParam>
@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
 
     //ideal policy and solvers
     IdealPolicy ideal; //ideal policy for bounds
-    IdealSolver ideal_solver(&ideal, jseq_time);
+    IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
 
     //fifo policy and solvers
     FIFOPolicy fifo; //fifo policy
@@ -203,7 +203,7 @@ int main(int argc, char* argv[]) {
         ListMetaSolution<SequenceMetaSolution> listseqmetasol(diversifiedSeq);
         bestof_jseq.set_initial_solution(listseqmetasol);
         {
-        Timer("BO SJSEQ timer");
+        Timer timer("BO SJSEQ timer");
         sjseq_solution = bestof_jseq.solve(trainInstance); 
         }
         std::cout<<"SJSEQ training score : " << fifo.evaluate_meta(*sjseq_solution, trainInstance) << std::endl;                 
@@ -212,14 +212,14 @@ int main(int argc, char* argv[]) {
 
         //SJSEQ front evaluation
         clean_sjseq_solution = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->front_sub_metasolutions(&fifo, trainInstance);
-        std::cout<<"SJSEQ (Front) training score : " << fifo.evaluate_meta(*clean_sjseq_solution, trainInstance) << std::endl; 
-        std::cout<<"SJSEQ (Front) testing score : " << fifo.evaluate_meta(*clean_sjseq_solution, testInstance) << std::endl; 
+        std::cout<<"SJSEQ Front training score : " << fifo.evaluate_meta(*clean_sjseq_solution, trainInstance) << std::endl; 
+        std::cout<<"SJSEQ Front testing score : " << fifo.evaluate_meta(*clean_sjseq_solution, testInstance) << std::endl; 
 
 
         //EW diversification 
         std::vector<GroupMetaSolution> AllSolutionsGroup;
         {
-        Timer("EW step timer");
+        Timer timer("EW step timer");
         for (size_t i=0; i<diversifiedSeq.size();i++){ 
             EWSolver.set_initial_solution(diversifiedSeq[i]);
             EWSolver.solve_savesteps(trainInstance, metaSet);
@@ -242,7 +242,7 @@ int main(int argc, char* argv[]) {
         ListMetaSolution<GroupMetaSolution> listgroupmetasol(AllSolutionsGroup);
         bestof_gseq.set_initial_solution(listgroupmetasol);
         {
-        Timer("BO SGSEQ timer");
+        Timer timer("BO SGSEQ timer");
         sgseq_solution = bestof_gseq.solve(trainInstance); 
         }
         std::cout<<"SGSEQ training score : " << fifo.evaluate_meta(*sgseq_solution, trainInstance) << std::endl; 
@@ -251,16 +251,15 @@ int main(int argc, char* argv[]) {
 
         //SGSEQ front evaluation
         clean_sgseq_solution = (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->front_sub_metasolutions(&fifo, trainInstance);
-        std::cout<<"SGSEQ (Front) training score : " << fifo.evaluate_meta(*clean_sgseq_solution, trainInstance) << std::endl; 
-        std::cout<<"SGSEQ (Front) testing score : " << fifo.evaluate_meta(*clean_sgseq_solution, testInstance) << std::endl; //note that the "front" of a SGSEQ also should have the same training score, however, there can exists several different fronts, that can behave differently in testing. The front isn't unique
+        std::cout<<"SGSEQ Front training score : " << fifo.evaluate_meta(*clean_sgseq_solution, trainInstance) << std::endl; 
+        std::cout<<"SGSEQ Front testing score : " << fifo.evaluate_meta(*clean_sgseq_solution, testInstance) << std::endl; //note that the "front" of a SGSEQ also should have the same training score, however, there can exists several different fronts, that can behave differently in testing. The front isn't unique
 
 
         std::cout << std:: endl << "==== Solutions dump ===" << std::endl;
         //debug solution dumps
         std::vector<MetaSolution*> outputs = {ideal_train_solution, ideal_test_solution, fifo_solution, jseq_solution, gseq_solution, clean_sjseq_solution, clean_sgseq_solution};
         for (size_t i = 0; i<outputs.size(); i++){
-            std::cout << "Output " << i << ": " << typeid(*outputs[i]).name() << std::endl;
-            std::cout << "Solution: ";
+            std::cout << "Output " << typeid(*outputs[i]).name() << ": " ;
             outputs[i]->print();
             std::cout << std::endl;
         }
