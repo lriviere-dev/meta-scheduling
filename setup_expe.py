@@ -2,20 +2,20 @@ import os
 from itertools import product
 
 # Slurm and display parameters
-run_name = "experiment_name"  # Change this to your run name
-experiment_mode = 'product'  # "product" for full combinorial of all parameters or "star" to vary only one parameter at a time (note that default param aren't used if product mode)
+run_name = "var_test"  # Change this to your run name
+experiment_mode = 'star'  # "product" for full combinorial of all parameters or "star" to vary only one parameter at a time (note that default param aren't used if product mode)
 OUTDIR = "outputs_" + run_name  
 ERRDIR = "errors_" + run_name  
 MAILTO = "louis.riviere@laas.fr"  # Mail to mail when experiment ends
-MAXMEM = "2000"  # Memory (mega)
-MAXTIME = "2:00:00"  # Time limit
+MAXMEM = "4000"  # Memory (mega)
+MAXTIME = "10:00:00"  # Time limit
 
 # Parameters for experiments: (values list, default value)
-benchfolders = [os.getcwd() + "/instances/" + name for name in ["bench_1p_s"]] #list all folders where to look for instance files
+benchfolders = [os.getcwd() + "/instances/" + name for name in ["bench_1p_var"]] #list all folders where to look for instance files
 
 parameters = {  # parameter_name : [values], default value (for star mode)
     "jseq_time": ([60*60], 60*60), 
-    "nb_sampled_scenarios": ([2, 5, 10, 25, 50, 100, 200], 25), 
+    "nb_sampled_scenarios": ([5, 25, 100], 25), 
 }
 
 
@@ -27,7 +27,6 @@ os.system(f"mkdir -p {ERRDIR}")
 # Open keyfile to write commands
 job_lines = []
 with open(f'{run_name}.key', 'w') as keyfile:
-    keyfile.write('2 methods\n')
 
     # Generate parameter combinations based on the selected mode
     param_combinations = []
@@ -64,7 +63,7 @@ num_jobs = len(job_lines)
 # Create job file for SLURM batch system
 with open(f'jobs_{run_name}.sh', 'w') as slurm_file:
     slurm_file.write("#!/bin/sh\n")
-    slurm_file.write(f"#SBATCH --ntasks=1 --mail-type=END --mail-user={MAILTO} --mem={MAXMEM} --array=1-{num_jobs} --time={MAXTIME} --output {OUTDIR}/{run_name}_%a.out --error {ERRDIR}/{run_name}_%a.err\n")
+    slurm_file.write(f"#SBATCH  --exclude=trencavel-10g,balibaste-10g,nestorius-10g,spinoza-10g,perelha,dolcino,askew-10g,pirovano,molay,sernay,hus --ntasks=1 --mail-type=END --mail-user={MAILTO} --mem={MAXMEM} --array=1-{num_jobs} --time={MAXTIME} --output {OUTDIR}/{run_name}_%a.out --error {ERRDIR}/{run_name}_%a.err\n")
     slurm_file.write(f"srun -u `sed ${{SLURM_ARRAY_TASK_ID}}'q;d' {run_name}.key`\n")
 
 # Output the SLURM job script path and jobs file path
