@@ -32,6 +32,35 @@ public:
         front_sequences.clear();
     }
 
+    //quantile function to get a specific quantile score among scenarios.
+    // WARNING : doesn't check who did the evaluation
+    int get_quantile(double quantile, Policy &policy , DataInstance &instance) const {
+        if (!scored_by) throw std::runtime_error("metasolution must be scored");
+        if (scored_by != &policy) throw std::runtime_error("metasolution was scored for another policy");
+        if (scored_for != &instance) throw std::runtime_error("metasolution was scored for another instance");
+        if (quantile < 0 || quantile > 1) throw std::invalid_argument("Quantile must be between 0 and 1.");
+
+        //sort the scores
+        std::vector<int> sorted_scores = scores;
+        std::sort(sorted_scores.begin(), sorted_scores.end());
+
+        size_t index = static_cast<size_t>(std::ceil(quantile * sorted_scores.size())) - 1;
+        if (index >= sorted_scores.size()) index = sorted_scores.size() - 1; // clamp
+
+    return sorted_scores[index];
+    }
+
+    //basicly a proxy for scores, sorted
+    std::vector<int> get_quantiles(Policy &policy, DataInstance &instance) const {
+        if (!scored_by) throw std::runtime_error("metasolution must be scored");
+        if (scored_by != &policy) throw std::runtime_error("metasolution was scored for another policy");
+        if (scored_for != &instance) throw std::runtime_error("metasolution was scored for another instance");
+        //sort the scores
+        std::vector<int> sorted_scores = scores;
+        std::sort(sorted_scores.begin(), sorted_scores.end());
+
+    return sorted_scores;
+    }
 };
 
 

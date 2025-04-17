@@ -8,8 +8,8 @@
 
 Schedule::Schedule(std::vector<int> startTimesArray) : startTimes(startTimesArray) {}
 
-// Maybe there should be an input for evaluation type sigma gamma. 
-// For now implemented type is max sumci.
+// Maybe there should be an input for evaluation type gamma. 
+// For now implemented type is sumci.
 // note that feasibility is not checked.
 int Schedule::evaluate(const DataInstance& instance) {
     // A schedule is evaluated for an instance (scenario is irrelevant, feasibility isn't checked)

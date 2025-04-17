@@ -17,7 +17,7 @@
 #include <functional>
 
 
-//The Policy handles the second decision stage. From Meta solution to Sequence to Schedule. It opperates within a scenario.
+// The Policy handles the second decision stage. From Meta solution to Sequence to Schedule. It opperates within a scenario.
 // WARNING : because of the current scope, some functions should be exclusive to "MAX-policies" (extract_sub_metasolution_index for example). small refactor is in order.
 // WARNING : similarly, we require lexicographical order to be defined for the policy
 class Policy {
@@ -100,7 +100,7 @@ public:
             int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
             metasol.scores.resize(instance.S);
             metasol.front_sequences.resize(instance.S);
-            for (int i=0; i<instance.S; i++) { 
+            for (int i=0; i<instance.S; i++) { //for each scenario, get sequence and score, to aggregate
                 Sequence seq = this->extract_sequence(metasol, instance, i);
                 Schedule schedule = this->transform_to_schedule(seq, instance, i);
                 // Evaluate the schedule for the current scenario
@@ -157,6 +157,7 @@ public:
         limiting_index = this->extract_sub_metasolution_index(metasol, instance, limiting_scenario);
         return limiting_index; 
     }
+
 };
 
 

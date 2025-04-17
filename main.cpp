@@ -20,6 +20,19 @@ template class ListMetaSolution<GroupMetaSolution>;
 template class BestOfAlgorithm<SequenceMetaSolution>;
 template class BestOfAlgorithm<GroupMetaSolution>;
 
+//array to string helper
+template<typename T>
+std::string vec_to_string(const std::vector<T>& vec) {
+    std::ostringstream oss;
+    oss << "[";
+    for (size_t i = 0; i < vec.size(); ++i) {
+        oss << vec[i];
+        if (i + 1 < vec.size()) oss << ", ";
+    }
+    oss << "]";
+    return oss.str();
+}
+
 std::vector<SequenceMetaSolution> diversify_step (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance) {
     int steps = 1; //TODO : could be a parameter.
     int neighborhood_size = 1; //TODO : could be a parameter.
@@ -165,24 +178,32 @@ int main(int argc, char* argv[]) {
         ideal_test_solution = ideal_solver.solve(testInstance);
         std::cout<<"Ideal training score : " << ideal.evaluate_meta(*ideal_train_solution, trainInstance) << std::endl; 
         std::cout<<"Ideal testing score : " << ideal.evaluate_meta(*ideal_test_solution, testInstance) << std::endl; 
+        std::cout<<"Ideal testing quantiles : " << vec_to_string(ideal_test_solution->get_quantiles(ideal, testInstance)) << std::endl; 
+        std::cout<<"Ideal testing 90q : " << ideal_test_solution->get_quantile(0.9, ideal, testInstance) << std::endl; 
 
         //FIFO -> Fully reactive solution
         fifo_solution = FifoSolver.solve(trainInstance); //resolving isn't necessary as the solution is identical no matter the input training scenarios, however, solve time is negligeable
         std::cout<<"Fifo training score : " << fifo.evaluate_meta(*fifo_solution, trainInstance) << std::endl; 
         std::cout<<"Fifo testing score : " << fifo.evaluate_meta(*fifo_solution, testInstance) << std::endl; 
+        std::cout<<"Fifo testing quantiles : " << vec_to_string(fifo_solution->get_quantiles(fifo, testInstance)) << std::endl; 
+        std::cout<<"Fifo testing 90q : " << fifo_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
 
         //SLALGO PROCESS:
         //CPO -> JSEQ solution
         jseq_solution = JseqSolver.solve(trainInstance);
         std::cout<<"JSEQ training score : " << fifo.evaluate_meta(*jseq_solution, trainInstance) << std::endl; 
         std::cout<<"JSEQ testing score : " << fifo.evaluate_meta(*jseq_solution, testInstance) << std::endl; 
+        std::cout<<"JSEQ testing quantiles : " << vec_to_string(jseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
+        std::cout<<"JSEQ testing 90q : " << jseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
 
         //EW -> GSEQ solution
         EWSolver.set_initial_solution(*jseq_solution);
         gseq_solution = EWSolver.solve(trainInstance);
         std::cout<<"GSEQ training score : " << fifo.evaluate_meta(*gseq_solution, trainInstance) << std::endl; 
         std::cout<<"GSEQ testing score : " << fifo.evaluate_meta(*gseq_solution, testInstance) << std::endl; 
-        
+        std::cout<<"GSEQ testing quantiles : " << vec_to_string(gseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
+        std::cout<<"GSEQ testing 90q : " << gseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+
 
         //Diversify JSEQ solution
         std::vector<SequenceMetaSolution> AllSolutionsSeq;
@@ -208,12 +229,16 @@ int main(int argc, char* argv[]) {
         }
         std::cout<<"SJSEQ training score : " << fifo.evaluate_meta(*sjseq_solution, trainInstance) << std::endl;                 
         std::cout<<"SJSEQ testing score : " << fifo.evaluate_meta(*sjseq_solution, testInstance) << std::endl; 
+        std::cout<<"SJSEQ testing quantiles : " << vec_to_string(sjseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
+        std::cout<<"SJSEQ testing 90q : " << sjseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
 
 
         //SJSEQ front evaluation
         clean_sjseq_solution = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->front_sub_metasolutions(&fifo, trainInstance);
         std::cout<<"SJSEQ Front training score : " << fifo.evaluate_meta(*clean_sjseq_solution, trainInstance) << std::endl; 
         std::cout<<"SJSEQ Front testing score : " << fifo.evaluate_meta(*clean_sjseq_solution, testInstance) << std::endl; 
+        std::cout<<"SJSEQ Front testing quantiles : " << vec_to_string(clean_sjseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
+        std::cout<<"SJSEQ Front testing 90q : " << clean_sjseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
 
 
         //EW diversification 
@@ -247,12 +272,17 @@ int main(int argc, char* argv[]) {
         }
         std::cout<<"SGSEQ training score : " << fifo.evaluate_meta(*sgseq_solution, trainInstance) << std::endl; 
         std::cout<<"SGSEQ testing score : " << fifo.evaluate_meta(*sgseq_solution, testInstance) << std::endl; 
+        std::cout<<"SGSEQ testing quantiles : " << vec_to_string(sgseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
+        std::cout<<"SGSEQ testing 90q : " << sgseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
 
 
         //SGSEQ front evaluation
         clean_sgseq_solution = (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->front_sub_metasolutions(&fifo, trainInstance);
         std::cout<<"SGSEQ Front training score : " << fifo.evaluate_meta(*clean_sgseq_solution, trainInstance) << std::endl; 
         std::cout<<"SGSEQ Front testing score : " << fifo.evaluate_meta(*clean_sgseq_solution, testInstance) << std::endl; //note that the "front" of a SGSEQ also should have the same training score, however, there can exists several different fronts, that can behave differently in testing. The front isn't unique
+        std::cout<<"SGSEQ Front testing quantiles : " << vec_to_string(clean_sgseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
+        std::cout<<"SGSEQ Front testing 90q : " << clean_sgseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+
 
 
         std::cout << std:: endl << "==== Solutions dump ===" << std::endl;
