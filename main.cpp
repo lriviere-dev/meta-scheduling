@@ -4,6 +4,7 @@
 #include "Sequence.h"
 #include "Policy.h"
 #include "PolicyFifo.h"
+#include "PolicySPT.h"
 #include "MetaSolutions.h"
 #include "ListMetaSolutions.h"
 #include "Algorithms.h"
@@ -155,15 +156,16 @@ int main(int argc, char* argv[]) {
     IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
 
     //fifo policy and solvers
-    FIFOPolicy fifo; //fifo policy
-    PureFiFoSolver FifoSolver(&fifo);
-    JSEQSolver JseqSolver(&fifo, jseq_time);
-    EssweinAlgorithm EWSolver(&fifo);
-    BestOfAlgorithm<SequenceMetaSolution> bestof_jseq(&fifo);
-    BestOfAlgorithm<GroupMetaSolution> bestof_gseq(&fifo);
+    //FIFOPolicy used_policy; //fifo policy
+    SPTPolicy used_policy; //spt policy
+    PurePolicySolver PolicySolver(&used_policy);
+    JSEQSolver JseqSolver(&used_policy, jseq_time);
+    EssweinAlgorithm EWSolver(&used_policy);
+    BestOfAlgorithm<SequenceMetaSolution> bestof_jseq(&used_policy);
+    BestOfAlgorithm<GroupMetaSolution> bestof_gseq(&used_policy);
 
     //Output solutions declaration
-    MetaSolution* ideal_train_solution, *ideal_test_solution, *fifo_solution, *jseq_solution, *gseq_solution, *sjseq_solution, *sgseq_solution, *clean_sjseq_solution, *clean_sgseq_solution;
+    MetaSolution* ideal_train_solution, *ideal_test_solution, *pure_policy_solution, *jseq_solution, *gseq_solution, *sjseq_solution, *sgseq_solution, *clean_sjseq_solution, *clean_sgseq_solution;
     std::unordered_set<GroupMetaSolution> metaSet; //the map allows to not repeat identical EW steps between te different JSEQ. (results kept even for each scenario sampling)
 
     
@@ -181,28 +183,28 @@ int main(int argc, char* argv[]) {
         std::cout<<"Ideal testing quantiles : " << vec_to_string(ideal_test_solution->get_quantiles(ideal, testInstance)) << std::endl; 
         std::cout<<"Ideal testing 90q : " << ideal_test_solution->get_quantile(0.9, ideal, testInstance) << std::endl; 
 
-        //FIFO -> Fully reactive solution
-        fifo_solution = FifoSolver.solve(trainInstance); //resolving isn't necessary as the solution is identical no matter the input training scenarios, however, solve time is negligeable
-        std::cout<<"Fifo training score : " << fifo.evaluate_meta(*fifo_solution, trainInstance) << std::endl; 
-        std::cout<<"Fifo testing score : " << fifo.evaluate_meta(*fifo_solution, testInstance) << std::endl; 
-        std::cout<<"Fifo testing quantiles : " << vec_to_string(fifo_solution->get_quantiles(fifo, testInstance)) << std::endl; 
-        std::cout<<"Fifo testing 90q : " << fifo_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+        //Pure policy -> Fully reactive solution
+        pure_policy_solution = PolicySolver.solve(trainInstance); //resolving isn't necessary as the solution is identical no matter the input training scenarios, however, solve time is negligeable
+        std::cout<<"Pure policy training score : " << used_policy.evaluate_meta(*pure_policy_solution, trainInstance) << std::endl; 
+        std::cout<<"Pure policy testing score : " << used_policy.evaluate_meta(*pure_policy_solution, testInstance) << std::endl; 
+        std::cout<<"Pure policy testing quantiles : " << vec_to_string(pure_policy_solution->get_quantiles(used_policy, testInstance)) << std::endl; 
+        std::cout<<"Pure policy testing 90q : " << pure_policy_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
         //SLALGO PROCESS:
         //CPO -> JSEQ solution
         jseq_solution = JseqSolver.solve(trainInstance);
-        std::cout<<"JSEQ training score : " << fifo.evaluate_meta(*jseq_solution, trainInstance) << std::endl; 
-        std::cout<<"JSEQ testing score : " << fifo.evaluate_meta(*jseq_solution, testInstance) << std::endl; 
-        std::cout<<"JSEQ testing quantiles : " << vec_to_string(jseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
-        std::cout<<"JSEQ testing 90q : " << jseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+        std::cout<<"JSEQ training score : " << used_policy.evaluate_meta(*jseq_solution, trainInstance) << std::endl; 
+        std::cout<<"JSEQ testing score : " << used_policy.evaluate_meta(*jseq_solution, testInstance) << std::endl; 
+        std::cout<<"JSEQ testing quantiles : " << vec_to_string(jseq_solution->get_quantiles(used_policy, testInstance)) << std::endl; 
+        std::cout<<"JSEQ testing 90q : " << jseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
         //EW -> GSEQ solution
         EWSolver.set_initial_solution(*jseq_solution);
         gseq_solution = EWSolver.solve(trainInstance);
-        std::cout<<"GSEQ training score : " << fifo.evaluate_meta(*gseq_solution, trainInstance) << std::endl; 
-        std::cout<<"GSEQ testing score : " << fifo.evaluate_meta(*gseq_solution, testInstance) << std::endl; 
-        std::cout<<"GSEQ testing quantiles : " << vec_to_string(gseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
-        std::cout<<"GSEQ testing 90q : " << gseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+        std::cout<<"GSEQ training score : " << used_policy.evaluate_meta(*gseq_solution, trainInstance) << std::endl; 
+        std::cout<<"GSEQ testing score : " << used_policy.evaluate_meta(*gseq_solution, testInstance) << std::endl; 
+        std::cout<<"GSEQ testing quantiles : " << vec_to_string(gseq_solution->get_quantiles(used_policy, testInstance)) << std::endl; 
+        std::cout<<"GSEQ testing 90q : " << gseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
 
         //Diversify JSEQ solution
@@ -227,18 +229,18 @@ int main(int argc, char* argv[]) {
         Timer timer("BO SJSEQ timer");
         sjseq_solution = bestof_jseq.solve(trainInstance); 
         }
-        std::cout<<"SJSEQ training score : " << fifo.evaluate_meta(*sjseq_solution, trainInstance) << std::endl;                 
-        std::cout<<"SJSEQ testing score : " << fifo.evaluate_meta(*sjseq_solution, testInstance) << std::endl; 
-        std::cout<<"SJSEQ testing quantiles : " << vec_to_string(sjseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
-        std::cout<<"SJSEQ testing 90q : " << sjseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+        std::cout<<"SJSEQ training score : " << used_policy.evaluate_meta(*sjseq_solution, trainInstance) << std::endl;                 
+        std::cout<<"SJSEQ testing score : " << used_policy.evaluate_meta(*sjseq_solution, testInstance) << std::endl; 
+        std::cout<<"SJSEQ testing quantiles : " << vec_to_string(sjseq_solution->get_quantiles(used_policy, testInstance)) << std::endl; 
+        std::cout<<"SJSEQ testing 90q : " << sjseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
 
         //SJSEQ front evaluation
-        clean_sjseq_solution = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->front_sub_metasolutions(&fifo, trainInstance);
-        std::cout<<"SJSEQ Front training score : " << fifo.evaluate_meta(*clean_sjseq_solution, trainInstance) << std::endl; 
-        std::cout<<"SJSEQ Front testing score : " << fifo.evaluate_meta(*clean_sjseq_solution, testInstance) << std::endl; 
-        std::cout<<"SJSEQ Front testing quantiles : " << vec_to_string(clean_sjseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
-        std::cout<<"SJSEQ Front testing 90q : " << clean_sjseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+        clean_sjseq_solution = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->front_sub_metasolutions(&used_policy, trainInstance);
+        std::cout<<"SJSEQ Front training score : " << used_policy.evaluate_meta(*clean_sjseq_solution, trainInstance) << std::endl; 
+        std::cout<<"SJSEQ Front testing score : " << used_policy.evaluate_meta(*clean_sjseq_solution, testInstance) << std::endl; 
+        std::cout<<"SJSEQ Front testing quantiles : " << vec_to_string(clean_sjseq_solution->get_quantiles(used_policy, testInstance)) << std::endl; 
+        std::cout<<"SJSEQ Front testing 90q : " << clean_sjseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
 
         //EW diversification 
@@ -251,16 +253,16 @@ int main(int argc, char* argv[]) {
         }
         }
         AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());
-        AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(fifo_solution)); //inserting the fifo fully permutable solution to make sure score is at least as good (very likely to be removed by GSEQ)
+        AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(pure_policy_solution)); //inserting the fifo fully permutable solution to make sure score is at least as good (very likely to be removed by GSEQ)
         AllSolutionsGroup[AllSolutionsGroup.size()-1].reset_evaluation();
 
         int best_GSEQ_sofar = 0;
         for (int k = 0; k<AllSolutionsGroup.size(); k++){
-            if (!AllSolutionsGroup[k].scored_by){fifo.evaluate_meta( AllSolutionsGroup[k], trainInstance);}
+            if (!AllSolutionsGroup[k].scored_by){used_policy.evaluate_meta( AllSolutionsGroup[k], trainInstance);}
             if (AllSolutionsGroup[k].score <  AllSolutionsGroup[best_GSEQ_sofar].score){best_GSEQ_sofar = k;}
         }
-        std::cout<<"Best GSEQ training score : " << fifo.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll
-        std::cout<<"Best GSEQ testing score : " << fifo.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], testInstance) << std::endl; 
+        std::cout<<"Best GSEQ training score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll
+        std::cout<<"Best GSEQ testing score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], testInstance) << std::endl; 
 
 
         //BO(GSEQ) -> SGSEQ solution
@@ -270,24 +272,24 @@ int main(int argc, char* argv[]) {
         Timer timer("BO SGSEQ timer");
         sgseq_solution = bestof_gseq.solve(trainInstance); 
         }
-        std::cout<<"SGSEQ training score : " << fifo.evaluate_meta(*sgseq_solution, trainInstance) << std::endl; 
-        std::cout<<"SGSEQ testing score : " << fifo.evaluate_meta(*sgseq_solution, testInstance) << std::endl; 
-        std::cout<<"SGSEQ testing quantiles : " << vec_to_string(sgseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
-        std::cout<<"SGSEQ testing 90q : " << sgseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+        std::cout<<"SGSEQ training score : " << used_policy.evaluate_meta(*sgseq_solution, trainInstance) << std::endl; 
+        std::cout<<"SGSEQ testing score : " << used_policy.evaluate_meta(*sgseq_solution, testInstance) << std::endl; 
+        std::cout<<"SGSEQ testing quantiles : " << vec_to_string(sgseq_solution->get_quantiles(used_policy, testInstance)) << std::endl; 
+        std::cout<<"SGSEQ testing 90q : " << sgseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
 
         //SGSEQ front evaluation
-        clean_sgseq_solution = (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->front_sub_metasolutions(&fifo, trainInstance);
-        std::cout<<"SGSEQ Front training score : " << fifo.evaluate_meta(*clean_sgseq_solution, trainInstance) << std::endl; 
-        std::cout<<"SGSEQ Front testing score : " << fifo.evaluate_meta(*clean_sgseq_solution, testInstance) << std::endl; //note that the "front" of a SGSEQ also should have the same training score, however, there can exists several different fronts, that can behave differently in testing. The front isn't unique
-        std::cout<<"SGSEQ Front testing quantiles : " << vec_to_string(clean_sgseq_solution->get_quantiles(fifo, testInstance)) << std::endl; 
-        std::cout<<"SGSEQ Front testing 90q : " << clean_sgseq_solution->get_quantile(0.9, fifo, testInstance) << std::endl; 
+        clean_sgseq_solution = (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->front_sub_metasolutions(&used_policy, trainInstance);
+        std::cout<<"SGSEQ Front training score : " << used_policy.evaluate_meta(*clean_sgseq_solution, trainInstance) << std::endl; 
+        std::cout<<"SGSEQ Front testing score : " << used_policy.evaluate_meta(*clean_sgseq_solution, testInstance) << std::endl; //note that the "front" of a SGSEQ also should have the same training score, however, there can exists several different fronts, that can behave differently in testing. The front isn't unique
+        std::cout<<"SGSEQ Front testing quantiles : " << vec_to_string(clean_sgseq_solution->get_quantiles(used_policy, testInstance)) << std::endl; 
+        std::cout<<"SGSEQ Front testing 90q : " << clean_sgseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
 
 
         std::cout << std:: endl << "==== Solutions dump ===" << std::endl;
         //debug solution dumps
-        std::vector<MetaSolution*> outputs = {ideal_train_solution, ideal_test_solution, fifo_solution, jseq_solution, gseq_solution, clean_sjseq_solution, clean_sgseq_solution};
+        std::vector<MetaSolution*> outputs = {ideal_train_solution, ideal_test_solution, pure_policy_solution, jseq_solution, gseq_solution, clean_sjseq_solution, clean_sgseq_solution};
         for (size_t i = 0; i<outputs.size(); i++){
             std::cout << "Output " << typeid(*outputs[i]).name() << ": " ;
             outputs[i]->print();

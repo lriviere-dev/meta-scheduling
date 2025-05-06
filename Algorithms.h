@@ -49,9 +49,9 @@ public:
 
 //FIFO : a bit of a workaround but outputs the fully permutable group.
 //Takes a policy as input but obv. requires FIFO policy.
-class PureFiFoSolver : public Algorithm {
+class PurePolicySolver : public Algorithm {
 public:
-    PureFiFoSolver(Policy* policy) {
+    PurePolicySolver(Policy* policy) {
         this->policy = policy; // Use the policy provided during initialization
     }
 

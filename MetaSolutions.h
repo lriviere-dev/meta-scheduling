@@ -71,6 +71,7 @@ public:
     GroupMetaSolution(std::vector<std::vector<int>>& taskGroups)
         : taskGroups(taskGroups) {}
 
+
      //operator to check groupSolution equality, could be faster if groups were sorted by default 
     bool operator==(const GroupMetaSolution& other) const {
         if (taskGroups.size() != other.taskGroups.size()) return false;

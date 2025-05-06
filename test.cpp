@@ -3,6 +3,7 @@
 #include "Instance.h"
 #include "Sequence.h"
 #include "Policy.h"
+#include "PolicySPT.h"
 #include "MetaSolutions.h"
 #include "ListMetaSolutions.h"
 #include "Algorithms.h"
@@ -10,7 +11,33 @@
 #include "Ideal.h"
 
 
-int test() {
+int main2() {
+
+    std::cout << "=== TESTING SPTPolicy on Manual GroupMetaSolution ===" << std::endl;
+    
+    std::string file_name = "instances/test_spt.data";  // Default file for tests
+    DataInstance instance(file_name);
+    instance.print_summary();
+
+    // Create policy
+    SPTPolicy spt_policy;
+    
+    // Create a manual GroupMetaSolution
+    std::vector<std::vector<int>> sol = {{0},{1,2}};
+    GroupMetaSolution manual_solution(sol);
+    manual_solution.print();
+    std::cout << std::endl;
+
+    // Evaluate on trainInstance (or any DataInstance you have ready)
+    double score = spt_policy.evaluate_meta(manual_solution, instance);
+    
+    spt_policy.transform_to_schedule(manual_solution.front_sequences[0], instance, 0).print();
+     std::cout << "SPTPolicy score on manual solution s0: " << manual_solution.scores[0] << std::endl;
+   spt_policy.transform_to_schedule(manual_solution.front_sequences[1], instance, 1).print();
+    std::cout << "SPTPolicy score on manual solution s1: " << manual_solution.scores[1] << std::endl;
+
+    std::cout << "SPTPolicy score on manual solution: " << score << std::endl;
+
     return 0;
 }
 
@@ -136,7 +163,7 @@ int test() {
 
     std::cout << "==== ALGO / META EVAL TEST ===" << std::endl;
 
-    PureFiFoSolver PureFifo(&fifo);
+    PurePolicySolver PureFifo(&fifo);
     MetaSolution* purefifosolution = PureFifo.solve(instance);
 
     std::cout << "Solution reached:"; 
