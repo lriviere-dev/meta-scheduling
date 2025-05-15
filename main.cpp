@@ -156,8 +156,8 @@ int main(int argc, char* argv[]) {
     IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
 
     //fifo policy and solvers
-    //FIFOPolicy used_policy; //fifo policy
-    SPTPolicy used_policy; //spt policy
+    FIFOPolicy used_policy; //fifo policy
+    //SPTPolicy used_policy; //spt policy
     PurePolicySolver PolicySolver(&used_policy);
     JSEQSolver JseqSolver(&used_policy, jseq_time);
     EssweinAlgorithm EWSolver(&used_policy);
