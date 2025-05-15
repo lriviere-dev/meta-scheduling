@@ -48,6 +48,7 @@ private:
 public:
     PrefixTree() : root_(std::make_unique<PrefixTreeNode>()) {}
 
+    //add a solution to the tree (allows for a further starting point)
     void add(const std::vector<std::vector<int>>& partial_groups,
              const std::vector<std::vector<int>>& partial_sequences,
              const std::vector<std::vector<int>>& times,
@@ -102,31 +103,33 @@ public:
     }
 
 
-    //Search for existing prefix
-    //returns index of group in common, sequences for each scenarios for prefix, time for each scenarioso after prefix (could be recomputed from sequence)
-    std::tuple<int, const std::vector<std::vector<int>>*, const std::vector<int>*> search(const GroupMetaSolution& gms) const {
-        const PrefixTreeNode* current = root_.get();
+    std::tuple<int, const std::vector<std::vector<int>>*, const std::vector<int>*, PrefixTreeNode*> search(const GroupMetaSolution& gms) const {
+        const PrefixTreeNode* current_const = root_.get(); // Start search from the root (const pointer)
+        PrefixTreeNode* last_matched_node = root_.get(); // Pointer to the last node that was a match (non-const for return)
+
         int matching_groups = 0;
         const std::vector<std::vector<int>>* prefix_sequences = nullptr; // Pointer to the sequence at the last matched node
         const std::vector<int>* times_at_prefix = nullptr;               // Pointer to the times at the last matched node
 
-        // if no groups match, `matching_groups` is 0, and pointers should be null.
+        // If no groups match, `matching_groups` is 0, and pointers should be null,
+        // but `last_matched_node` will be `root_.get()`.
 
         for (const auto& search_group : gms.get_task_groups()) {
-            auto it = current->children.find(search_group);
-            if (it != current->children.end()) {
+            auto it = current_const->children.find(search_group);
+            if (it != current_const->children.end()) {
                 // Match found
-                current = it->second.get();
+                current_const = it->second.get(); // Move to the child node
+                last_matched_node = const_cast<PrefixTreeNode*>(current_const); // Update last_matched_node
                 matching_groups++;
-                prefix_sequences = &current->sequences; // Update pointer to the sequence of the newly matched node
-                times_at_prefix = &current->times;     // Update pointer to the times of the newly matched node
+                prefix_sequences = &current_const->sequences; // Update pointer to the sequence of the newly matched node
+                times_at_prefix = &current_const->times;     // Update pointer to the times of the newly matched node
             } else {
                 // No match for this group, so similarity stops here
                 break;
             }
         }
-        // Return the tuple
-        return std::make_tuple(matching_groups, prefix_sequences, times_at_prefix);
+        // Return the tuple including the last matched node
+        return std::make_tuple(matching_groups, prefix_sequences, times_at_prefix, last_matched_node);
     }
 };
 

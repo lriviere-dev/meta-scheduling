@@ -7,6 +7,7 @@
 #include "Sequence.h"
 #include "Schedule.h"
 #include "Instance.h"
+#include "PrefixTree.h"
 #include <vector>
 #include <deque>
 #include <ilcp/cp.h>
@@ -14,7 +15,15 @@
 #include <tuple>
 #include <functional>
 
-#include <functional>
+
+//struct to more easily group informations, used for trie (Info for a single scenario !)
+struct ExtractedSequenceInfo { 
+    Sequence sequence;
+    std::vector<std::vector<int>> partial_groups; // The remaining groups after 'match_count'
+    std::vector<int> partial_sequence_flat; // The flattened sequence of tasks from the *processed* groups
+    std::vector<int> group_end_times; // Times at which each *processed* group ended
+    PrefixTreeNode* last_node; // pointer to last common node
+};
 
 
 // The Policy handles the second decision stage. From Meta solution to Sequence to Schedule. It opperates within a scenario.
@@ -22,15 +31,20 @@
 // WARNING : similarly, we require lexicographical order to be defined for the policy
 class Policy {
 public:
+
+    mutable std::unordered_map<const DataInstance*, PrefixTree> prefix_trees_by_instance;
+
     virtual ~Policy() = default;
 
     // Pure virtual function to be implemented by derived policies
     virtual Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const = 0;
+    virtual ExtractedSequenceInfo  extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id, int match_count, const std::vector<std::vector<int>>* seq_ptr, const std::vector<int>* times_ptr) const = 0;
+
     virtual bool isLexicographicallySmaller(const Sequence& seq1, const Sequence& seq2, const DataInstance& instance, int scenario_id) const = 0;
     virtual int extract_sub_metasolution_index(const MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const = 0;    
     
     //functions virtual but with default implementation
-    //ERD will be shared by probably all policies
+    //ERD will be shared by probably all policies at the sequence to schedule level (just scheduling asap while respecting sequence)
     virtual Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& instance, int scenario_id) const {
         const std::vector<int>& tasks = sequence.get_tasks(); // Get tasks in sequence order
         const std::vector<int>& releaseDates = instance.releaseDates[scenario_id]; // Access release dates for tasks
@@ -80,6 +94,15 @@ public:
         // same for all policies. just extract a schedule and evaluate it for all scenarios.
         // assume aggregator : max
 
+        // Get or create the prefix tree for the current instance
+        auto it = prefix_trees_by_instance.find(&instance);
+        if (it == prefix_trees_by_instance.end()) {
+            // Create a new PrefixTree for this instance if it doesn't exist
+            it = prefix_trees_by_instance.emplace(&instance, PrefixTree()).first;
+        }
+        PrefixTree& tree = it->second; //fetch the prefix tree for this instance
+
+
         if (!metasol.scored_by){//metasol was not already scored -> score it and set front/scores for each scenario
             //special case if metasol is a list of metasol, we recursively have to make sure to evaluate the underlying before
             if (ListMetaSolutionBase* listMeta = dynamic_cast<ListMetaSolutionBase*>(&metasol)) {
@@ -96,26 +119,58 @@ public:
                 }
             }
 
+            //We have to score it, but maybe we can expediate the work (depending on the metasolution type)
+            int match_count;
+            const std::vector<std::vector<int>>* seq_ptr = nullptr;
+            const std::vector<int>* times_ptr = nullptr;
+            PrefixTreeNode* last_node = nullptr;
+
+            //ALso declaring variables to store and cache
+            std::vector<std::vector<std::vector<int>>> all_partial_groups_per_scenario;
+            std::vector<std::vector<int>> all_partial_sequences_flat_per_scenario;
+            std::vector<std::vector<int>> all_group_end_times_per_scenario;
+
+            if (GroupMetaSolution* groupmetasol = dynamic_cast<GroupMetaSolution*>(&metasol)){
+                std::tie(match_count, seq_ptr, times_ptr, last_node) = tree.search(*groupmetasol); //returns number of matching group, partial sequences until then (or none), times after those sequences (or none)  For each scenario
+            }
+            else { //unhandled shortcuts for these other metasol types. Use default values
+                match_count = 0;
+                seq_ptr = nullptr;
+                times_ptr = nullptr;
+                last_node = nullptr;
+            }
+
             // Iterate over all scenarios in the DataInstance
             int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
             metasol.scores.resize(instance.S);
             metasol.front_sequences.resize(instance.S);
             for (int i=0; i<instance.S; i++) { //for each scenario, get sequence and score, to aggregate
-                Sequence seq = this->extract_sequence(metasol, instance, i);
-                Schedule schedule = this->transform_to_schedule(seq, instance, i);
+                //Sequence seq = this->extract_sequence(metasol, instance, i, match_count, seq_ptr, times_ptr);
+                ExtractedSequenceInfo extracted_info = this->extract_sequence(metasol, instance, i, match_count, seq_ptr, times_ptr, last_node);
+                
+                Schedule schedule = this->transform_to_schedule(extracted_info.sequence, instance, i);
                 // Evaluate the schedule for the current scenario
                 int cost = schedule.evaluate(instance);
                 //set metasol data
                 metasol.scores[i]=cost;
-                metasol.front_sequences[i] = seq; 
+                metasol.front_sequences[i] = extracted_info.sequence; 
                 // Update the maximum cost
                 if (cost > maxCost) {
                     maxCost = cost;
                 }
+                //Collect scenario-specific data for caching *if* it's a GroupMetaSolution
+                // These vectors hold the data for *this* specific scenario 'i'
+                all_partial_groups_per_scenario.push_back(extracted_info.partial_groups);
+                all_partial_sequences_flat_per_scenario.push_back(extracted_info.partial_sequence_flat);
+                all_group_end_times_per_scenario.push_back(extracted_info.group_end_times);
             }
             metasol.score = maxCost; //set metasol score
             metasol.scored_by = this;
             metasol.scored_for = &instance;
+            //Cache info if possible to cache that type
+            if (GroupMetaSolution* groupmetasol = dynamic_cast<GroupMetaSolution*>(&metasol)){
+                    tree.add(all_partial_groups_per_scenario, all_partial_sequences_flat_per_scenario, all_group_end_times_per_scenario, last_node);
+            }
             return maxCost; // Return the aggregated value (max)
         }
         else if (metasol.scored_by!=this || metasol.scored_for!=&instance){ // else if it is scored but not by this policy, or not for this instance
@@ -126,7 +181,7 @@ public:
             else {
                 metasol.reset_evaluation(); //reset it and then score (via recursive call))
             }
-            return this->evaluate_meta(metasol, instance);
+            return this->evaluate_meta(metasol, instance); //call evaluation again, it will take care of everything.
         }
         else{ //metasol was scored by this policy for this instance already, just send result.
             return metasol.score;
