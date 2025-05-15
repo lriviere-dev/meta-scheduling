@@ -10,6 +10,7 @@
 #include "Instance.h"
 #include <vector>
 #include <set>
+#include <queue>
 #include <deque>
 #include <ilcp/cp.h>
 #include <tuple>
@@ -36,8 +37,7 @@ public:
             const auto& releaseDates = instance.releaseDates[scenario_id];
             const auto& durations = instance.durations;
             const auto& prec = instance.precedenceConstraints;
-            std::set<int, std::less<int>> prec_free_nodes; // sorted set of prec_available nodes; 
-            std::set<int, std::less<int>> free_nodes; // sorted set of available (both release and precednece wise) nodes (default comparison by index)  std::vector<int> incoming_edges_nb; 
+            std::priority_queue<int, std::vector<int>, std::greater<int>> free_nodes; // sorted queue of available (both release and precednece wise) nodes (default comparison by index) sorted by spt (through index of group); 
             int time  = 0; //tracks time to see if tasks are ready
             std::vector<int> incoming_edges_nb; 
             std::vector<std::vector<int>> outgoing_edges; 
@@ -45,7 +45,13 @@ public:
 
             // Iterate over each group of tasks
             for (auto& group : groupMeta->get_task_groups_modifiable()) { 
-                // First, sort the tasks by their durations (or lex order if tie)
+                //creating the second set here due to scope issue, but some overhead is expected.
+                auto releaseDateComparator = [&](int index1, int index2) {
+                    return (releaseDates[group[index1]] < releaseDates[group[index2]]) || ((releaseDates[group[index1]] == releaseDates[group[index2]]) && (group[index1]<group[index2])); //lex if equal (could be unnecessary, but I'm afraid of undefined behavior if weak ordering)
+                };
+                std::set<int, decltype(releaseDateComparator)> prec_free_nodes(releaseDateComparator); // sorted set of prec_available nodes, sorted by release date/lex; 
+
+                // First, sort the tasks by their durations (or lex order if tie) (boolean expression could be slightly more efficient)
                 std::sort(group.begin(), group.end(), [&durations](int t1, int t2) {
                     //check release dates
                     if (durations[t1] != durations[t2]) {
@@ -56,7 +62,7 @@ public:
 
                 //precompute a graph-like node structure for toposort (ensures precedence constraints satisfactions)
                 incoming_edges_nb.resize(group.size(), 0);
-                for (auto& vec : outgoing_edges) vec.clear(); // Clears contents without deallocating
+                for (auto& vec : outgoing_edges) {vec.clear();} // Clears contents without deallocating
                 outgoing_edges.resize(group.size()); // Ensures correct size without reallocating inner vectors                
                 for (size_t i=0; i<group.size();  i++) { //!!! We use index "0" for example to refer to the 0th task in group vector (it also indicates it has the smallest duration)!
                     //for each tasks list nodes with an incoming edge
@@ -68,45 +74,37 @@ public:
                             outgoing_edges[i].push_back(j); 
                         }                        
                     }
-                    if (incoming_edges_nb[i]==0){prec_free_nodes.insert(i);}//remember tasks without incoming edge (prec-wise ready) //keeps sorted order from group
+                    if (incoming_edges_nb[i]==0){prec_free_nodes.insert(i);}//remember tasks without incoming edge (prec-wise ready) / sorts by release
                 }
                 //find first decision moment : min time when a prec_free task is realeased
-                int prec_free_nodes_min_release = releaseDates[group[*prec_free_nodes.begin()]]; // Initial case using the first element
-                for (auto node : prec_free_nodes){
-                    prec_free_nodes_min_release = std::min(prec_free_nodes_min_release, releaseDates[group[node]]);
-                }
-                time = std::max(time, prec_free_nodes_min_release); //jumping to next decision moment if necessary
+                time = std::max(time,  releaseDates[group[*prec_free_nodes.begin()]]); //jumping to next decision moment if necessary. prec_free_nodes.begin is the smallest release date in the set (sorted)
                 //init done, now looping till group fully treated
                 while (!free_nodes.empty() || !prec_free_nodes.empty()){
-                    //update free_nodes at that time
-                    std::vector<int> to_erase;
-                    for (int node : prec_free_nodes) {
-                        if (releaseDates[group[node]] <= time) {
-                            free_nodes.insert(node);
-                            to_erase.push_back(node);
-                        }
+                    //update free_nodes at that time (pre_free nodes that are released)
+                    auto it_begin = prec_free_nodes.begin();
+                    auto it_end = prec_free_nodes.begin();
+                    // Find the iterator to the first element whose release date is greater than time
+                    while (it_end != prec_free_nodes.end() && releaseDates[group[*it_end]] <= time) {
+                        free_nodes.push(*it_end);
+                        ++it_end;
                     }
-                    for (int node : to_erase) {//erasing separately to not fuck with the iterations
-                        prec_free_nodes.erase(node);
-                    }
+                    // Erase the range [it_begin, it_end)
+                    prec_free_nodes.erase(it_begin, it_end);
+
                     //find task to schedule and schedule it
-                    int selected_task = *free_nodes.begin();  // Get the first (smallest) element (there must be one)
-                    free_nodes.erase(selected_task);    // Remove it from the set
+                    int selected_task = free_nodes.top();  // Get the first (smallest) element (there must be one)
+                    free_nodes.pop();    // Remove it from the set
                     sequence[c++] = group[selected_task];    // Post-increment
                     for (auto& node : outgoing_edges[selected_task]) {  // Remove edges with this task
                         incoming_edges_nb[node]--;
                         if (incoming_edges_nb[node] == 0) {
-                            prec_free_nodes.insert(node);  // Insert node into the set, which keeps it sorted by index
+                            prec_free_nodes.insert(node);  // Insert node into the set, which keeps it sorted by release date
                         }
                     }
                     time+=durations[group[selected_task]]; //update time
                     //find new decision time (skip time if no task ready yet). also check it's not the end yet.
                     if (free_nodes.empty() && !prec_free_nodes.empty()){
-                        prec_free_nodes_min_release = releaseDates[group[*prec_free_nodes.begin()]]; // Initial case using the first element
-                        for (auto node : prec_free_nodes){
-                            prec_free_nodes_min_release = std::min(prec_free_nodes_min_release, releaseDates[group[node]]);
-                        }
-                        time = std::max(time, prec_free_nodes_min_release); //jumping to next decision moment if necessary
+                        time = std::max(time,  releaseDates[group[*prec_free_nodes.begin()]]); //jumping to next decision moment if necessary. prec_free_nodes.begin is the smallest release date in the set (sorted)
                     }
                 }
             }

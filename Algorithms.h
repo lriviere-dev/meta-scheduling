@@ -47,8 +47,8 @@ public:
 
 //specific Algorithms
 
-//FIFO : a bit of a workaround but outputs the fully permutable group.
-//Takes a policy as input but obv. requires FIFO policy.
+// a bit of a workaround but outputs the fully permutable group, policy then schedules.
+//Takes a policy as input 
 class PurePolicySolver : public Algorithm {
 public:
     PurePolicySolver(Policy* policy) {

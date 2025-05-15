@@ -61,6 +61,17 @@ public:
 
     return sorted_scores;
     }
+
+    //literally a proxy for scores, unsorted (in order of scenarios used (see used scenario_list))
+    std::vector<int> get_scores(Policy &policy, DataInstance &instance) const {
+        if (!scored_by) throw std::runtime_error("metasolution must be scored");
+        if (scored_by != &policy) throw std::runtime_error("metasolution was scored for another policy");
+        if (scored_for != &instance) throw std::runtime_error("metasolution was scored for another instance");
+        //sort the scores
+        std::vector<int> output_scores = scores;
+
+    return output_scores;
+    }
 };
 
 
