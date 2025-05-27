@@ -52,7 +52,7 @@ std::vector<SequenceMetaSolution> diversify_step (std::vector<SequenceMetaSoluti
     return output_solutions;
 }
 
-std::vector<SequenceMetaSolution> diversify_step_random (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance, Policy & policy,  std::mt19937 &rng) {
+/*std::vector<SequenceMetaSolution> diversify_step_random (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance, Policy & policy,  std::mt19937 &rng) {
     std::vector<SequenceMetaSolution> output_solutions;
     output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
     
@@ -100,7 +100,7 @@ std::vector<SequenceMetaSolution> diversify_step_ideal (std::vector<SequenceMeta
         output_solutions.push_back(SequenceMetaSolution(seq));
     }
     return output_solutions;
-}
+}*/
 
 int main(int argc, char* argv[]) {
     // Default parameter values
@@ -156,8 +156,8 @@ int main(int argc, char* argv[]) {
     IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
 
     //fifo policy and solvers
-    FIFOPolicy used_policy; //fifo policy
-    //SPTPolicy used_policy; //spt policy
+    //FIFOPolicy used_policy; //fifo policy
+    SPTPolicy used_policy; //spt policy
     PurePolicySolver PolicySolver(&used_policy);
     JSEQSolver JseqSolver(&used_policy, jseq_time);
     EssweinAlgorithm EWSolver(&used_policy);
