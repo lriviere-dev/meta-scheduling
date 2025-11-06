@@ -22,6 +22,8 @@ class SPTPolicy : public Policy {
 public:
     ~SPTPolicy() = default;
 
+    std::string name = "spt_policy";
+
     // How to get a sequence from the meta solutions
     Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override{
         if(metaSolution.scored_by){throw std::runtime_error("Extracting sequence but metasol is already scored.");} //if already scored, why don't we just get the stored result?

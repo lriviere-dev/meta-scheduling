@@ -156,8 +156,10 @@ int main(int argc, char* argv[]) {
     IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
 
     //fifo policy and solvers
-    FIFOPolicy used_policy; //fifo policy
-    //SPTPolicy used_policy; //spt policy
+    //FIFOPolicy used_policy; //fifo policy
+    SPTPolicy used_policy; //spt policy
+    std::cout << "Policy : " << used_policy.name << std::endl;
+
     PurePolicySolver PolicySolver(&used_policy);
     JSEQSolver JseqSolver(&used_policy, jseq_time);
     EssweinAlgorithm EWSolver(&used_policy);
@@ -265,6 +267,8 @@ int main(int argc, char* argv[]) {
         }
         std::cout<<"Best GSEQ training score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll
         std::cout<<"Best GSEQ testing score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], testInstance) << std::endl; 
+        std::cout<<"Best GSEQ testing scenario scores : " << vec_to_string(AllSolutionsGroup[best_GSEQ_sofar].get_scores(used_policy, testInstance)) << std::endl; 
+        std::cout<<"Best GSEQ testing 90q : " << AllSolutionsGroup[best_GSEQ_sofar].get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
 
         //BO(GSEQ) -> SGSEQ solution

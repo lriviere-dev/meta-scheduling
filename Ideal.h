@@ -54,6 +54,7 @@ private:
 class IdealPolicy : public Policy {
 public:
     ~IdealPolicy() = default;
+    std::string name = "ideal_policy";
 
     // Override extract_sequence for GroupMetaSolution
     Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override {

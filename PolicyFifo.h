@@ -21,6 +21,8 @@ class FIFOPolicy : public Policy {
 public:
     ~FIFOPolicy() = default;
 
+    std::string name = "fifo_policy";
+
     // Override extract_sequence for GroupMetaSolution
     Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override{
         if(metaSolution.scored_by){throw std::runtime_error("Extracting sequence but metasol is already scored.");} //if already scored, why don't we just get the stored result?

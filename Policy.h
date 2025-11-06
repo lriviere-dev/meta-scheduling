@@ -23,6 +23,7 @@
 class Policy {
 public:
     virtual ~Policy() = default;
+    std::string name = "undefined_policy";
 
     // Pure virtual function to be implemented by derived policies
     virtual Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const = 0;
