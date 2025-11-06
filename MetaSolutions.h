@@ -205,13 +205,11 @@ private:
 namespace std {
     template <>
     struct hash<GroupMetaSolution> {
-        size_t operator()(const GroupMetaSolution& gms) const { // Add `const`
+        size_t operator()(const GroupMetaSolution& gms) const {
             size_t hash_value = 0;
             for (const auto& group : gms.get_task_groups()) {
-                std::vector<int> sorted_group = group;
-                std::sort(sorted_group.begin(), sorted_group.end());
-                for (int task : sorted_group) {
-                    hash_value ^= std::hash<int>{}(task) + 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
+                for (int task : group) {
+                    hash_value ^= std::hash<int>{}(task) + 0x9e3779b9; //somewhat collision prone but insensitivity to order. alternative is sorting groups
                 }
                 hash_value ^= 0x9e3779b9 + (hash_value << 6) + (hash_value >> 2);
             }
@@ -219,7 +217,6 @@ namespace std {
         }
     };
 }
-
 // The simple sequence (JSEQ)
 class SequenceMetaSolution:  public MetaSolution {
 public:

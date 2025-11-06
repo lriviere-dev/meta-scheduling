@@ -252,6 +252,8 @@ int main(int argc, char* argv[]) {
             EWSolver.solve_savesteps(trainInstance, metaSet);
         }
         }
+        std::cout << "number of diversifiedsol gseq :" <<metaSet.size()<<std::endl;
+
         AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());
         AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(pure_policy_solution)); //inserting the fifo fully permutable solution to make sure score is at least as good (very likely to be removed by GSEQ)
         AllSolutionsGroup[AllSolutionsGroup.size()-1].reset_evaluation();
