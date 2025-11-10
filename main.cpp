@@ -34,12 +34,13 @@ std::string vec_to_string(const std::vector<T>& vec) {
     return oss.str();
 }
 
-std::vector<SequenceMetaSolution> diversify_step (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance) {
+std::vector<SequenceMetaSolution> diversify_step_neighbours (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance) {
     int steps = 1; //TODO : could be a parameter.
-    int neighborhood_size = 1; //TODO : could be a parameter.
+    int neighborhood_size = 2; //TODO : could be a parameter.
     std::vector<SequenceMetaSolution> output_solutions;
     output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
-
+    //return output_solutions; //TODO : shortcutting process to not diversify.
+    
     for (int step = 0; step < steps; step++) //repeat process depending on diversification strenghth (this will create duplicate solutions as inverse step can be taken. Could be done smarter)
     {
         for (size_t i = 0; i < input_solutions.size(); i++)
@@ -52,21 +53,22 @@ std::vector<SequenceMetaSolution> diversify_step (std::vector<SequenceMetaSoluti
     return output_solutions;
 }
 
-std::vector<SequenceMetaSolution> diversify_step_random (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance, Policy & policy,  std::mt19937 &rng) {
+std::vector<SequenceMetaSolution> diversify_step_random (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance,  std::mt19937 &rng) {
     std::vector<SequenceMetaSolution> output_solutions;
     output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
-    
-    SwapDescent descent(&policy);
-    size_t nb_new = instance.N/2; //simulating similar nb of solution than swap (/2 cause we insert starting random and descended)
+    int k = 2;
+
+    //SwapDescent descent(&policy);
+    size_t nb_new = pow(instance.N,k); //k controls number of random solutions
     for (size_t i = 0; i < nb_new; i++)
     {
         Sequence rand_seq = Sequence(instance.N, rng);//gen random sequence
         rand_seq.fix_precedence_constraints(instance); //fix it for prec constraints
         SequenceMetaSolution rand_seq_meta = SequenceMetaSolution(rand_seq);
-        descent.set_initial_solution(rand_seq_meta);
-        MetaSolution* descended_seq_meta = descent.solve(instance);//descent on it
+        //descent.set_initial_solution(rand_seq_meta);
         output_solutions.push_back(rand_seq_meta);//add to list
-        output_solutions.push_back(*(dynamic_cast<SequenceMetaSolution*>(descended_seq_meta)));
+        //MetaSolution* descended_seq_meta = descent.solve(instance);//descent on it
+        //output_solutions.push_back(*(dynamic_cast<SequenceMetaSolution*>(descended_seq_meta)));
     }
     
     return output_solutions;
@@ -95,10 +97,38 @@ std::vector<SequenceMetaSolution> diversify_step_ideal (std::vector<SequenceMeta
     std::vector<SequenceMetaSolution> output_solutions;
     output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
     
-    //solve again using solve_savestep (redundant of course, just for testing purposes)
+    //get the computed sequence for each scenario computed in the idealsol. (remember they are unlikely to be the front too)
     for (Sequence seq : (dynamic_cast<IdealMetaSolution*> (ideal_sol))->get_sequences()){
-        output_solutions.push_back(SequenceMetaSolution(seq));
+        SequenceMetaSolution x = SequenceMetaSolution(seq);
+        if(std::find(output_solutions.begin(), output_solutions.end(), x) == output_solutions.end()) {//not adding doubles
+            output_solutions.push_back(x);
+        }
     }
+    return output_solutions;
+}
+
+//diversify that combines other functions. the idea is that we want a rather large number of solutions. the better a solution is, the more we add it's neighbours.
+//We could evaluate them mid-diversification to keep even more qualitative solutions.
+std::vector<SequenceMetaSolution> diversify_step_multi (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance, MetaSolution * ideal_sol, std::mt19937 &rng) {
+    std::vector<SequenceMetaSolution> output_solutions;
+    //add initial solutions
+    output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
+        
+    //extra diversify by integrating neighbors of previously added "good quality" solutions.
+    output_solutions = diversify_step_neighbours(output_solutions, instance);
+
+    //add jseq research solution (don't do it because I don't want to run a solver a long time again, but we could keep the sequences from earlier)
+    // using diversify_step_jseq
+
+    //add ideal solutions (the "best" sequence found in each scenario without front considerations (as per limited solver time))
+    output_solutions = diversify_step_ideal(output_solutions, instance, ideal_sol);
+
+    //extra diversify by integrating neighbors of previously added "good quality" solutions.
+    output_solutions = diversify_step_neighbours(output_solutions, instance);
+
+    //add random solutions (don't add their neighbours) //However, this introduces lots of variability to the result. Maybe skip ?
+    //output_solutions = diversify_step_random(output_solutions, instance, rng);
+
     return output_solutions;
 }
 
@@ -129,6 +159,14 @@ int main(int argc, char* argv[]) {
             nb_training_scenarios = std::stoi(argv[3]);
         } catch (const std::exception& e) {
             std::cerr << "Warning: Invalid integer parameter. Using default: " << nb_training_scenarios<< "\n";
+        }
+    }
+
+    if (argc > 4) { // sethirdcond argument
+        try {
+            sampling_iterations = std::stoi(argv[4]);
+        } catch (const std::exception& e) {
+            std::cerr << "Warning: Invalid integer parameter. Using default: " << sampling_iterations << "\n";
         }
     }
 
@@ -212,17 +250,12 @@ int main(int argc, char* argv[]) {
         //Diversify JSEQ solution
         std::vector<SequenceMetaSolution> AllSolutionsSeq;
         AllSolutionsSeq.push_back(*(dynamic_cast<SequenceMetaSolution*>(jseq_solution)));
-        std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step(AllSolutionsSeq, trainInstance);
+        std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_multi(AllSolutionsSeq, trainInstance, ideal_train_solution, rng);
+        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_neighbours(AllSolutionsSeq, trainInstance);
         //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_jseq(AllSolutionsSeq, trainInstance, JseqSolver);
-        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_random(AllSolutionsSeq, trainInstance, fifo, rng);
+        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_random(AllSolutionsSeq, trainInstance, rng);
         //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_ideal(AllSolutionsSeq, trainInstance, ideal_train_solution);
         std::cout << "number of diversifiedsol jseq :" <<diversifiedSeq.size()<<std::endl;
-        /*for (auto & sol : diversifiedSeq){
-            std::cout << "score :" << fifo.evaluate_meta(sol, trainInstance) <<std::endl;
-            sol.print();
-            std::cout << std::endl;
-            if (!sol.get_sequence().check_precedence_constraints(instance)){throw std::runtime_error("invalid");}
-        }*/
 
         //BO(JSEQ) -> SJSEQ solution
         ListMetaSolution<SequenceMetaSolution> listseqmetasol(diversifiedSeq);
@@ -244,21 +277,34 @@ int main(int argc, char* argv[]) {
         std::cout<<"SJSEQ Front testing scenario scores : " << vec_to_string(clean_sjseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"SJSEQ Front testing 90q : " << clean_sjseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
 
+        //for following steps, keep only front of best_of sjseq algo, up to a limit of sequences (There is already a cap of |S| sequences but We would like something smaller)
+        int max_diversity = 25; //arbitrary based on observed execution time
+        std::vector<SequenceMetaSolution> diversifiedSeqSample = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(clean_sjseq_solution))->get_meta_solutions_typed();
+        if (diversifiedSeqSample.size()>max_diversity)
+        {
+            diversifiedSeqSample.erase(diversifiedSeqSample.begin() + max_diversity, diversifiedSeqSample.end()); //we just truncate the output to limit max diversity
+            std::cout << "truncated front sample jseq solutions from :" <<diversifiedSeqSample.size()<<std::endl; 
+
+        }
+        
+        std::cout << "number of sampled diversified sol jseq :" <<diversifiedSeqSample.size()<<std::endl; 
+        
 
         //EW diversification 
         std::vector<GroupMetaSolution> AllSolutionsGroup;
         {
         Timer timer("EW step timer");
-        for (size_t i=0; i<diversifiedSeq.size();i++){ 
-            EWSolver.set_initial_solution(diversifiedSeq[i]);
+        for (size_t i=0; i<diversifiedSeqSample.size();i++){ 
+            EWSolver.set_initial_solution(diversifiedSeqSample[i]);
             EWSolver.solve_savesteps(trainInstance, metaSet);
         }
         }
-        std::cout << "number of diversifiedsol gseq :" <<metaSet.size()<<std::endl;
 
-        AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());
+        AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());//inserting all EW+ solutions
         AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(pure_policy_solution)); //inserting the fifo fully permutable solution to make sure score is at least as good (very likely to be removed by GSEQ)
         AllSolutionsGroup[AllSolutionsGroup.size()-1].reset_evaluation();
+
+        std::cout << "number of diversifiedsol gseq :" <<AllSolutionsGroup.size()<<std::endl;
 
         int best_GSEQ_sofar = 0;
         for (int k = 0; k<AllSolutionsGroup.size(); k++){
