@@ -62,7 +62,7 @@ public:
             if (instance.S != idealmeta->instance_S()) { //assert coherence
                 throw std::runtime_error("Incoherence between IdealMetaSolutions and instance");
             }
-            return idealmeta->get_sequence(scenario_id); // just return the ideal sequence
+            return idealmeta->get_sequence(scenario_id); // just return the ideal sequence for the scenario
         }
         else{
             throw std::runtime_error("IdealPolicy only handles IdealMetaSoluions");

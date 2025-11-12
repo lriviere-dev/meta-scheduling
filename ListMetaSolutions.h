@@ -59,6 +59,10 @@ public:
     }
 
 
+    const int get_meta_solutions_size() const {
+        return metaSolutions.size();
+    }
+
     const std::vector<T>& get_meta_solutions_typed() const {
         return metaSolutions;
     }

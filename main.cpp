@@ -36,7 +36,7 @@ std::string vec_to_string(const std::vector<T>& vec) {
 
 std::vector<SequenceMetaSolution> diversify_step_neighbours (std::vector<SequenceMetaSolution>& input_solutions, const DataInstance& instance) {
     int steps = 1; //TODO : could be a parameter.
-    int neighborhood_size = 2; //TODO : could be a parameter.
+    int neighborhood_size = 1; //TODO : could be a parameter.
     std::vector<SequenceMetaSolution> output_solutions;
     output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
     //return output_solutions; //TODO : shortcutting process to not diversify.
@@ -113,18 +113,21 @@ std::vector<SequenceMetaSolution> diversify_step_multi (std::vector<SequenceMeta
     std::vector<SequenceMetaSolution> output_solutions;
     //add initial solutions
     output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
-        
+    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
     //extra diversify by integrating neighbors of previously added "good quality" solutions.
     output_solutions = diversify_step_neighbours(output_solutions, instance);
+    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
 
     //add jseq research solution (don't do it because I don't want to run a solver a long time again, but we could keep the sequences from earlier)
     // using diversify_step_jseq
 
     //add ideal solutions (the "best" sequence found in each scenario without front considerations (as per limited solver time))
     output_solutions = diversify_step_ideal(output_solutions, instance, ideal_sol);
+    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
 
     //extra diversify by integrating neighbors of previously added "good quality" solutions.
     output_solutions = diversify_step_neighbours(output_solutions, instance);
+    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
 
     //add random solutions (don't add their neighbours) //However, this introduces lots of variability to the result. Maybe skip ?
     //output_solutions = diversify_step_random(output_solutions, instance, rng);
@@ -194,8 +197,8 @@ int main(int argc, char* argv[]) {
     IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
 
     //fifo policy and solvers
-    //FIFOPolicy used_policy; //fifo policy
-    SPTPolicy used_policy; //spt policy
+    FIFOPolicy used_policy; //fifo policy
+    //SPTPolicy used_policy; //spt policy
     std::cout << "Policy : " << used_policy.name << std::endl;
 
     PurePolicySolver PolicySolver(&used_policy);
@@ -220,31 +223,31 @@ int main(int argc, char* argv[]) {
         ideal_test_solution = ideal_solver.solve(testInstance);
         std::cout<<"Ideal training score : " << ideal.evaluate_meta(*ideal_train_solution, trainInstance) << std::endl; 
         std::cout<<"Ideal testing score : " << ideal.evaluate_meta(*ideal_test_solution, testInstance) << std::endl; 
-        std::cout<<"Ideal testing scenario scores : " << vec_to_string(ideal_test_solution->get_scores(ideal, testInstance)) << std::endl; 
         std::cout<<"Ideal testing 90q : " << ideal_test_solution->get_quantile(0.9, ideal, testInstance) << std::endl; 
+        std::cout<<"Ideal testing scenario scores : " << vec_to_string(ideal_test_solution->get_scores(ideal, testInstance)) << std::endl; 
 
         //Pure policy -> Fully reactive solution
         pure_policy_solution = PolicySolver.solve(trainInstance); //resolving isn't necessary as the solution is identical no matter the input training scenarios, however, solve time is negligeable
         std::cout<<"Pure policy training score : " << used_policy.evaluate_meta(*pure_policy_solution, trainInstance) << std::endl; 
         std::cout<<"Pure policy testing score : " << used_policy.evaluate_meta(*pure_policy_solution, testInstance) << std::endl; 
-        std::cout<<"Pure policy testing scenario scores : " << vec_to_string(pure_policy_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"Pure policy testing 90q : " << pure_policy_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"Pure policy testing scenario scores : " << vec_to_string(pure_policy_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
         //SLALGO PROCESS:
         //CPO -> JSEQ solution
         jseq_solution = JseqSolver.solve(trainInstance);
         std::cout<<"JSEQ training score : " << used_policy.evaluate_meta(*jseq_solution, trainInstance) << std::endl; 
         std::cout<<"JSEQ testing score : " << used_policy.evaluate_meta(*jseq_solution, testInstance) << std::endl; 
-        std::cout<<"JSEQ testing scenario scores : " << vec_to_string(jseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"JSEQ testing 90q : " << jseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"JSEQ testing scenario scores : " << vec_to_string(jseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
         //EW -> GSEQ solution
         EWSolver.set_initial_solution(*jseq_solution);
         gseq_solution = EWSolver.solve(trainInstance);
         std::cout<<"GSEQ training score : " << used_policy.evaluate_meta(*gseq_solution, trainInstance) << std::endl; 
         std::cout<<"GSEQ testing score : " << used_policy.evaluate_meta(*gseq_solution, testInstance) << std::endl; 
-        std::cout<<"GSEQ testing scenario scores : " << vec_to_string(gseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"GSEQ testing 90q : " << gseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"GSEQ testing scenario scores : " << vec_to_string(gseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
 
         //Diversify JSEQ solution
@@ -264,18 +267,20 @@ int main(int argc, char* argv[]) {
         Timer timer("BO SJSEQ timer");
         sjseq_solution = bestof_jseq.solve(trainInstance); 
         }
+        std::cout << "SJSEQ size :" << (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->get_meta_solutions_size()<<std::endl; 
         std::cout<<"SJSEQ training score : " << used_policy.evaluate_meta(*sjseq_solution, trainInstance) << std::endl;                 
         std::cout<<"SJSEQ testing score : " << used_policy.evaluate_meta(*sjseq_solution, testInstance) << std::endl; 
-        std::cout<<"SJSEQ testing scenario scores : " << vec_to_string(sjseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"SJSEQ testing 90q : " << sjseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"SJSEQ testing scenario scores : " << vec_to_string(sjseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
 
         //SJSEQ front evaluation
         clean_sjseq_solution = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_solution))->front_sub_metasolutions(&used_policy, trainInstance);
+        std::cout << "SJSEQ Front size :" << (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(clean_sjseq_solution))->get_meta_solutions_size()<<std::endl; 
         std::cout<<"SJSEQ Front training score : " << used_policy.evaluate_meta(*clean_sjseq_solution, trainInstance) << std::endl; 
         std::cout<<"SJSEQ Front testing score : " << used_policy.evaluate_meta(*clean_sjseq_solution, testInstance) << std::endl; 
-        std::cout<<"SJSEQ Front testing scenario scores : " << vec_to_string(clean_sjseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"SJSEQ Front testing 90q : " << clean_sjseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"SJSEQ Front testing scenario scores : " << vec_to_string(clean_sjseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
         //for following steps, keep only front of best_of sjseq algo, up to a limit of sequences (There is already a cap of |S| sequences but We would like something smaller)
         int max_diversity = 25; //arbitrary based on observed execution time
@@ -313,8 +318,8 @@ int main(int argc, char* argv[]) {
         }
         std::cout<<"Best GSEQ training score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll
         std::cout<<"Best GSEQ testing score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], testInstance) << std::endl; 
-        std::cout<<"Best GSEQ testing scenario scores : " << vec_to_string(AllSolutionsGroup[best_GSEQ_sofar].get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"Best GSEQ testing 90q : " << AllSolutionsGroup[best_GSEQ_sofar].get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"Best GSEQ testing scenario scores : " << vec_to_string(AllSolutionsGroup[best_GSEQ_sofar].get_scores(used_policy, testInstance)) << std::endl; 
 
 
         //BO(GSEQ) -> SGSEQ solution
@@ -324,18 +329,20 @@ int main(int argc, char* argv[]) {
         Timer timer("BO SGSEQ timer");
         sgseq_solution = bestof_gseq.solve(trainInstance); 
         }
+        std::cout << "SGSEQ size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->get_meta_solutions_size()<<std::endl; 
         std::cout<<"SGSEQ training score : " << used_policy.evaluate_meta(*sgseq_solution, trainInstance) << std::endl; 
         std::cout<<"SGSEQ testing score : " << used_policy.evaluate_meta(*sgseq_solution, testInstance) << std::endl; 
-        std::cout<<"SGSEQ testing scenario scores : " << vec_to_string(sgseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"SGSEQ testing 90q : " << sgseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"SGSEQ testing scenario scores : " << vec_to_string(sgseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
 
         //SGSEQ front evaluation
         clean_sgseq_solution = (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_solution))->front_sub_metasolutions(&used_policy, trainInstance);
+        std::cout << "SGSEQ Front size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(clean_sgseq_solution))->get_meta_solutions_size()<<std::endl; 
         std::cout<<"SGSEQ Front training score : " << used_policy.evaluate_meta(*clean_sgseq_solution, trainInstance) << std::endl; 
         std::cout<<"SGSEQ Front testing score : " << used_policy.evaluate_meta(*clean_sgseq_solution, testInstance) << std::endl; //note that the "front" of a SGSEQ also should have the same training score, however, there can exists several different fronts, that can behave differently in testing. The front isn't unique
-        std::cout<<"SGSEQ Front testing scenario scores : " << vec_to_string(clean_sgseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
         std::cout<<"SGSEQ Front testing 90q : " << clean_sgseq_solution->get_quantile(0.9, used_policy, testInstance) << std::endl; 
+        std::cout<<"SGSEQ Front testing scenario scores : " << vec_to_string(clean_sgseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
 
 
