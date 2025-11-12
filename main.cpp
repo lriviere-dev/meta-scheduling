@@ -197,8 +197,8 @@ int main(int argc, char* argv[]) {
     IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
 
     //fifo policy and solvers
-    FIFOPolicy used_policy; //fifo policy
-    //SPTPolicy used_policy; //spt policy
+    //FIFOPolicy used_policy; //fifo policy
+    SPTPolicy used_policy; //spt policy
     std::cout << "Policy : " << used_policy.name << std::endl;
 
     PurePolicySolver PolicySolver(&used_policy);
@@ -283,11 +283,13 @@ int main(int argc, char* argv[]) {
         std::cout<<"SJSEQ Front testing scenario scores : " << vec_to_string(clean_sjseq_solution->get_scores(used_policy, testInstance)) << std::endl; 
 
         //for following steps, keep only front of best_of sjseq algo, up to a limit of sequences (There is already a cap of |S| sequences but We would like something smaller)
+        // we also make sure to keep the jseq computed solution, in order to guarantee we will have the computed EW solution in the GSEQ set
         int max_diversity = 25; //arbitrary based on observed execution time
         std::vector<SequenceMetaSolution> diversifiedSeqSample = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(clean_sjseq_solution))->get_meta_solutions_typed();
         if (diversifiedSeqSample.size()>max_diversity)
         {
-            diversifiedSeqSample.erase(diversifiedSeqSample.begin() + max_diversity, diversifiedSeqSample.end()); //we just truncate the output to limit max diversity
+            diversifiedSeqSample.erase(diversifiedSeqSample.begin() + max_diversity -1, diversifiedSeqSample.end()); //we just truncate the output to limit max diversity
+            diversifiedSeqSample.push_back(jseq_solution); //adding the jseq solution (inneficient if already in, but cache should make it fast)
             std::cout << "truncated front sample jseq solutions from :" <<diversifiedSeqSample.size()<<std::endl; 
 
         }

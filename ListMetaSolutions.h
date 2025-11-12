@@ -55,7 +55,7 @@ public:
         //metaSolutions.erase(metaSolutions.begin() + index);
         metaSolutions[index] = metaSolutions.back();
         metaSolutions.pop_back();
-        reset_evaluation(); //here we could be more cleverer : the sequence/index used in each scenario ony changes if it was removed. update_evaluation(int removed_index)
+        reset_evaluation(); //here we could be more cleverer : the sequence/index used in each scenario only changes if it was removed. update_evaluation(int removed_index)
     }
 
 

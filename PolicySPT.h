@@ -128,7 +128,7 @@ public:
             Sequence minSeq = metaSolutions[0]->front_sequences[scenario_id]; // Initialize with the first sequence/metasol
             listMeta->front_indexes[scenario_id] = 0;
 
-            for (size_t i = 1; i < metaSolutions.size(); ++i) {  // Iterate from second element
+            for (size_t i = 1; i < metaSolutions.size(); ++i) {  // Iterate from second element to find smallest(lexicographically)
                 auto& seq = metaSolutions[i]->front_sequences[scenario_id];
                 if (isLexicographicallySmaller(seq, minSeq, instance, scenario_id)) {
                     minSeq = seq;

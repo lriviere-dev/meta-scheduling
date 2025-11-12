@@ -39,7 +39,7 @@ public:
             throw std::runtime_error("Initial solution must be of type ListMetaSolution<T>.");
         }
 
-        // Create a copy of the derived solution that we can then omdify inplace
+        // Create a copy of the derived solution that we can then modify inplace
         ListMetaSolution<T> currentSolution = ListMetaSolution<T>(*derivedSolution); //calling copy constructor
         std::vector<int> bestRemoves;
         std::vector<int> removes;
