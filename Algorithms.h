@@ -379,6 +379,14 @@ public:
             throw std::runtime_error("Initial solution is not of type SequenceMetaSolution!");
         }
 
+        std::vector<int> scenario_order(instance.S); //array given to solve_savesteps to prioritize scenarios more likely to trigger bound (scenario_order[0] : scenario to try first)
+        std::vector<int> position(instance.S); //reverse array giving (postion[0]: when to try scenario 0, or where it is in scenario_order)
+
+        for (int i = 0; i < instance.S; ++i) { //init arrays
+            scenario_order[i] = i;
+            position[i] = i;
+        }
+
         // Main loop: merge groups while improvement exists
         bool improvement = true;
         while (improvement) { //&& !timeLimitExceeded(startTime)
@@ -399,10 +407,16 @@ public:
                 int CandidateScore ;
 
                 try {//note : could also start eval with scenarios most likely to yield big bound.
-                    CandidateScore = policy->evaluate_meta(*candidateSolution, instance, bestCandidateScore); // Note that Esswein's algorithm conserves precedence constraints compliance(at least in extended form).
+                    CandidateScore = policy->evaluate_meta(*candidateSolution, instance, bestCandidateScore, &scenario_order); // Note that Esswein's algorithm conserves precedence constraints compliance(at least in extended form).
                 } catch (const EvaluationBoundExceeded& e) {
                     //evaluateMeta didn't complete the eval because bound was exceeded
-                    std::cout <<".";
+                    int s_bound = e.trigger_scenario;//scenario that triggered bound
+                    int pos_s_bound = position[s_bound]; //it's position in the list
+                    if (pos_s_bound > 0) { // bubble up by one slot
+                        int s_before = scenario_order[pos_s_bound - 1]; // get the scenario before
+                        std::swap(scenario_order[pos_s_bound], scenario_order[pos_s_bound - 1]); //swap positions
+                        std::swap(position[s_bound], position[s_before]); //swap info on position
+                    }
                     delete candidateSolution; //delete it
                     continue; //skip to next group fusion
                 }

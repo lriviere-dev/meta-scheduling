@@ -16,9 +16,9 @@
 
 class EvaluationBoundExceeded : public std::exception {
 public:
-    int bound_value;
+    int trigger_scenario;
 
-    explicit EvaluationBoundExceeded(int value) : bound_value(value) {}
+    explicit EvaluationBoundExceeded(int value) : trigger_scenario(value) {}
 
     const char* what() const noexcept override {
         return "Evaluation exceeded the given bound";
@@ -85,7 +85,7 @@ public:
 
 
     //Functions common to all Policies (i.e not virtual)
-    int evaluate_meta(MetaSolution& metasol, const DataInstance& instance, std::optional<int> exit_bound = std::nullopt) {
+    int evaluate_meta(MetaSolution& metasol, const DataInstance& instance, std::optional<int> exit_bound = std::nullopt, const std::vector<int>* scenario_order = nullptr) {
         // same for all policies. just extract a schedule and evaluate it for all scenarios.
         // assume aggregator : max (hence why we can potentially use a bound to stop scenario exploration)
 
@@ -109,7 +109,9 @@ public:
             int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
             metasol.scores.resize(instance.S);
             metasol.front_sequences.resize(instance.S);
-            for (int i=0; i<instance.S; i++) { //for each scenario, get sequence and score, to aggregate
+        
+            for (int k=0; k<instance.S; k++) { //for each scenario, get sequence and score, to aggregate
+                int i = scenario_order ? (*scenario_order)[k] : k; //if a custom order is provided, use it to change scenario exploration order
                 Sequence seq = this->extract_sequence(metasol, instance, i); 
                 Schedule schedule = this->transform_to_schedule(seq, instance, i);
                 // Evaluate the schedule for the current scenario
@@ -121,7 +123,7 @@ public:
                 if (cost > maxCost) {
                     maxCost = cost;
                     if (exit_bound.has_value() && maxCost > exit_bound.value()){ //given max aggregator, if the score in a scenario gets bigger than the bound, we know eval will return something bigger than bound
-                        throw EvaluationBoundExceeded(maxCost);
+                        throw EvaluationBoundExceeded(i);
                     }
                 }
             }

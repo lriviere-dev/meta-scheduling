@@ -318,7 +318,7 @@ int main(int argc, char* argv[]) {
             if (!AllSolutionsGroup[k].scored_by){used_policy.evaluate_meta( AllSolutionsGroup[k], trainInstance);}//not checking if scored for correct set here. COuld do but should be fine
             if (AllSolutionsGroup[k].score <  AllSolutionsGroup[best_GSEQ_sofar].score){best_GSEQ_sofar = k;}
         }
-        std::cout<<"Best GSEQ training score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll
+        std::cout<<"Best GSEQ training score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll (or rather, if the tested instances benefit from best of. If they don't, could mean SGSEQ are not usefull in general on instances, or could just mean it's a property of the instance.)
         std::cout<<"Best GSEQ testing score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], testInstance) << std::endl; 
         std::cout<<"Best GSEQ testing 90q : " << AllSolutionsGroup[best_GSEQ_sofar].get_quantile(0.9, used_policy, testInstance) << std::endl; 
         std::cout<<"Best GSEQ testing scenario scores : " << vec_to_string(AllSolutionsGroup[best_GSEQ_sofar].get_scores(used_policy, testInstance)) << std::endl; 
