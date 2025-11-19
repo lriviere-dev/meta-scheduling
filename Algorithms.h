@@ -394,16 +394,25 @@ public:
             int bestCandidatelargestGroupSize = currentSolution->largest_group_size();
             int bestCandidateMergeId =-1;
 
-            for (int i = 0; i < currentSolution->nb_groups()-1; ++i){
+            for (int i = 0; i < currentSolution->nb_groups()-1; ++i){//for each group, try to merge with following and eval. However, use the eval that takes a bound
                 GroupMetaSolution* candidateSolution = currentSolution->merge_groups(i);
-                int CandidateScore = policy->evaluate_meta(*candidateSolution, instance); // Note that Esswein's algorithm conserves precedence constraints compliance.
+                int CandidateScore ;
+
+                try {//note : could also start eval with scenarios most likely to yield big bound.
+                    CandidateScore = policy->evaluate_meta(*candidateSolution, instance, bestCandidateScore); // Note that Esswein's algorithm conserves precedence constraints compliance(at least in extended form).
+                } catch (const EvaluationBoundExceeded& e) {
+                    //evaluateMeta didn't complete the eval because bound was exceeded
+                    std::cout <<".";
+                    delete candidateSolution; //delete it
+                    continue; //skip to next group fusion
+                }
                 int CandidatelargestGroupSize = candidateSolution->largest_group_size();
                 //std::cout <<"considering :";
                 //candidateSolution->print();
                 //std::cout <<"\n";
                 
                 if ((CandidateScore<bestCandidateScore) || 
-                    ((CandidateScore==bestCandidateScore) && (CandidatelargestGroupSize < bestCandidatelargestGroupSize))){
+                    ((CandidateScore==bestCandidateScore) && (CandidatelargestGroupSize < bestCandidatelargestGroupSize))){ //if score strictly best or equal but largest group is smaller
                     /*std::cout << CandidateScore << "*:";
                     candidateSolution->print();
                     std::cout << "\n\n";*/

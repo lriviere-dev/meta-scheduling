@@ -8,14 +8,22 @@
 #include "Schedule.h"
 #include "Instance.h"
 #include <vector>
-#include <deque>
+#include <optional>
 #include <ilcp/cp.h>
 
 #include <tuple>
 #include <functional>
 
-#include <functional>
+class EvaluationBoundExceeded : public std::exception {
+public:
+    int bound_value;
 
+    explicit EvaluationBoundExceeded(int value) : bound_value(value) {}
+
+    const char* what() const noexcept override {
+        return "Evaluation exceeded the given bound";
+    }
+};
 
 // The Policy handles the second decision stage. From Meta solution to Sequence to Schedule. It opperates within a scenario.
 // WARNING : because of the current scope, some functions should be exclusive to "MAX-policies" (extract_sub_metasolution_index for example). small refactor is in order.
@@ -77,9 +85,9 @@ public:
 
 
     //Functions common to all Policies (i.e not virtual)
-    int evaluate_meta(MetaSolution& metasol, const DataInstance& instance) {
+    int evaluate_meta(MetaSolution& metasol, const DataInstance& instance, std::optional<int> exit_bound = std::nullopt) {
         // same for all policies. just extract a schedule and evaluate it for all scenarios.
-        // assume aggregator : max
+        // assume aggregator : max (hence why we can potentially use a bound to stop scenario exploration)
 
         if (!metasol.scored_by){//metasol was not already scored -> score it and set front/scores for each scenario
             //special case if metasol is a list of metasol, we recursively have to make sure to evaluate the underlying before
@@ -102,7 +110,7 @@ public:
             metasol.scores.resize(instance.S);
             metasol.front_sequences.resize(instance.S);
             for (int i=0; i<instance.S; i++) { //for each scenario, get sequence and score, to aggregate
-                Sequence seq = this->extract_sequence(metasol, instance, i);
+                Sequence seq = this->extract_sequence(metasol, instance, i); 
                 Schedule schedule = this->transform_to_schedule(seq, instance, i);
                 // Evaluate the schedule for the current scenario
                 int cost = schedule.evaluate(instance);
@@ -112,6 +120,9 @@ public:
                 // Update the maximum cost
                 if (cost > maxCost) {
                     maxCost = cost;
+                    if (exit_bound.has_value() && maxCost > exit_bound.value()){ //given max aggregator, if the score in a scenario gets bigger than the bound, we know eval will return something bigger than bound
+                        throw EvaluationBoundExceeded(maxCost);
+                    }
                 }
             }
             metasol.score = maxCost; //set metasol score

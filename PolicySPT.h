@@ -32,17 +32,17 @@ public:
         bool set_output = false;
         // Try to cast to GroupMetaSolution
         if (auto* groupMeta = dynamic_cast<GroupMetaSolution*>(&metaSolution)) {
-            // Handle GroupMetaSolution
+            // Handle GroupMetaSolution Metasolutions
 
-            std::vector<int> sequence(instance.N);
+            std::vector<int> sequence(instance.N); //stores output
             int c = 0; // counter for index
             const auto& releaseDates = instance.releaseDates[scenario_id];
             const auto& durations = instance.durations;
             const auto& prec = instance.precedenceConstraints;
             std::priority_queue<int, std::vector<int>, std::greater<int>> free_nodes; // sorted queue of available (both release and precednece wise) nodes (default comparison by index) sorted by spt (through index of group); 
-            int time  = 0; //tracks time to see if tasks are ready
-            std::vector<int> incoming_edges_nb; 
-            std::vector<std::vector<int>> outgoing_edges; 
+            int time  = 0; //tracks time during simulation to see if tasks are ready
+            std::vector<int> incoming_edges_nb; //counts number of edge into each node (prevents the corresponding task to run since prec constraints)
+            std::vector<std::vector<int>> outgoing_edges; //describes who must be after each task (to update them when relevant)
 
 
             // Iterate over each group of tasks
