@@ -7,6 +7,7 @@ class Policy;
 #include "MetaSolutions.h"
 #include <vector>
 #include <iostream>
+#include <queue>
 
 //necessary intermediate step to handle different types of ListMetaSolution as one
 class ListMetaSolutionBase : public MetaSolution {
@@ -14,7 +15,8 @@ public:
     virtual ~ListMetaSolutionBase() {}
     virtual std::vector<MetaSolution*> get_meta_solutions() const = 0;
     virtual void remove_meta_solution_index(size_t index)  = 0;
-    
+    virtual void remove_meta_solution_index_update(size_t index, std::vector<std::queue<size_t>>& scenarios_priority_indexes, std::vector<std::vector<int>>& scenarios_position_of_indexes,  std::vector<std::vector<size_t>>& scenarios_reverse_positions)  = 0;
+
     //call when modifying solution in place, removes evaluated tag to re trigger evaluation.
     void reset_evaluation() override { // has more things to do than default metasolution re-evaluation
         scored_by = nullptr;
@@ -48,6 +50,9 @@ public:
 
    //WARNING : removes the element and also moves around things! COuld be a problem 
    // In BO, we save index and do the removals again in the same order so it yields same output.
+   //further note : why is it moved around again? => we use a trick to be more efficient : instead of erasing the element, we replace it by the last and pop the last
+   // as a consequences, the removed index now holds the last element, and the last index now doesn't refer to anything. other indexes are untouched though.
+   //also note that ListMetasolutions store the index of the solution used in the front. hence they have to be handled.
     void remove_meta_solution_index(size_t index)  override {
         if (index >= metaSolutions.size()) {
             throw std::out_of_range("Index out of range");
@@ -55,7 +60,62 @@ public:
         //metaSolutions.erase(metaSolutions.begin() + index);
         metaSolutions[index] = metaSolutions.back();
         metaSolutions.pop_back();
-        reset_evaluation(); //here we could be more cleverer : the sequence/index used in each scenario only changes if it was removed. update_evaluation(int removed_index)
+        reset_evaluation(); //here we could be more cleverer : the sequence/index used in each scenario only changes if it was removed. update_evaluation(int removed_index)=> see _update version
+    }
+
+    //Removes the submeta at desired index and updates the metasolution data without recomputing unaffected scenarios
+    // updates costlessly thanks to list of followups,
+    //updates the arrays keeping track of indexes modifications.
+    //MAINTAINS CORRECT METASOLUTION DATA AND COHERENT INDEXES AT ALL TIMES
+    //OG indexes are remembered in BO algorithm using the passed info
+    void remove_meta_solution_index_update(size_t index, std::vector<std::queue<size_t>>& scenarios_priority_indexes, 
+                                                              std::vector<std::vector<int>>& scenarios_position_of_indexes, //array[s,i] gives position (index in current sol) of index i (in original solution : the one used in scenarios_priority_indexes)
+                                                              std::vector<std::vector<size_t>>& scenarios_reverse_positions //reverse of positions (used to find content at each index)
+                                                            )  override {
+        if (index >= metaSolutions.size()) {
+            throw std::out_of_range("Index to remove is out of possible range");
+        }
+                
+        size_t next_id;
+        int position; //position can be negative (-1 marks unavailability)
+        size_t moved_id;
+
+        //metaSolutions.erase(metaSolutions.begin() + index);
+        metaSolutions[index] = metaSolutions.back();
+
+        //update data each scenario where it matters (remember to update position arrays if there is a change)
+        for (size_t s = 0; s < scenarios_priority_indexes.size(); ++s) {
+            if (this->front_indexes[s] == index){ //we're removing the index used in this scenario: needs update
+                scenarios_priority_indexes[s].pop(); //delete the most prio (current)
+                next_id = scenarios_priority_indexes[s].front();//find the og index of the next most prio metasolution 
+                position = scenarios_position_of_indexes[s][next_id];//find it's corresponding index in the current metasolution
+                while (position < 0)//continue popping while solutions were already removed previously (if position is -1)
+                {
+                    scenarios_priority_indexes[s].pop();
+                    next_id = scenarios_priority_indexes[s].front(); //iterate through sorted list
+                    position = scenarios_position_of_indexes[s][next_id]; //current index of solution to use in this scenario
+                }
+                //update sequences[s], scores[s], front indexs[s] accordingly    
+                this->front_indexes[s] = position; //front indexes keeps track of CURRENT indexes. the truth of og indexes is used only in the BO data (the three arrays input)
+                this->scores[s] = metaSolutions[position].scores[s];
+                this->front_sequences[s] = metaSolutions[position].front_sequences[s];
+                if (this->scores[s]>this->score) {this->score = this->scores[s];}//if new sequence prio, update metasolution global/score
+            }
+            if (this->front_indexes[s] == metaSolutions.size()-1){//if we were using the last one, then obsolete pointer to element to be deleted (case 1 : next in queue was that eleement, so we said the front index was last, but it'll move. )
+                this->front_indexes[s] = index; //then it has been moved to index position
+            }
+            
+
+            //keep track of id changes (in all scenarios)
+            moved_id = scenarios_reverse_positions[s].back();//og_id of last in reverse the last in current list
+            scenarios_position_of_indexes[s][moved_id] = index; //the moved id now can be found at index DO BEFORE NEXT LINE FOR EDGE CASE WHERE THEY ARE THE SAME
+            scenarios_position_of_indexes[s][scenarios_reverse_positions[s][index]] = -1; //we removed what was in the list at position index (reverse[index]), hence trying to find where that is now should yields -1
+            scenarios_reverse_positions[s][index] = moved_id; //keeping track of change in id (actual change to the submetasol list made before loop) reflected in reverse list
+            scenarios_reverse_positions[s].pop_back(); //delete entry (mirrors actual list)
+        }
+        metaSolutions.pop_back();
+
+        // all changes made by hand, no reset_evaluation();
     }
 
 

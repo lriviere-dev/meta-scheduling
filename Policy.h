@@ -134,7 +134,7 @@ public:
         }
     };
             
-    int find_limiting_element(const MetaSolution& metasol, const DataInstance& instance) const{ //finds the limiting element of a listMetaSOlution
+    int find_limiting_scenario(const MetaSolution& metasol, const DataInstance& instance) const{ //finds the limiting scenario of a listMetaSOlution
         // same for all policies. Similar to evaluate_meata but keep the scenario culprit.
         // assume aggregator : max 
 
@@ -143,7 +143,7 @@ public:
             throw std::runtime_error("MetaSolution must be of type ListMetaSolutionBase.");
         } 
 
-        // Iterate over all scenarios in the DataInstance
+        // Iterate over all scenarios in the DataInstance to find the worst one
         int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
         int limiting_index = 0; 
         int limiting_scenario = 0; 
@@ -155,8 +155,9 @@ public:
                 limiting_scenario = i;
             }
         }
-        limiting_index = this->extract_sub_metasolution_index(metasol, instance, limiting_scenario);
-        return limiting_index; 
+        return limiting_scenario;
+        //obsolete limiting_index = this->extract_sub_metasolution_index(metasol, instance, limiting_scenario);
+        //return limiting_index; 
     }
 
 };

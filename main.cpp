@@ -139,7 +139,7 @@ int main(int argc, char* argv[]) {
     // Default parameter values
     std::string file_name = "instances/test.data";  // Default file for tests
     int jseq_time = 10;                     // Time allocated to jseq solver (seconds)
-    int nb_training_scenarios = 2;  //this is the number of training scenarios : S
+    int nb_training_scenarios = 1;  //this is the number of training scenarios : S
     int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
 
     // Command-line arguments override defaults:
@@ -289,7 +289,7 @@ int main(int argc, char* argv[]) {
         if (diversifiedSeqSample.size()>max_diversity)
         {
             diversifiedSeqSample.erase(diversifiedSeqSample.begin() + max_diversity -1, diversifiedSeqSample.end()); //we just truncate the output to limit max diversity
-            diversifiedSeqSample.push_back(jseq_solution); //adding the jseq solution (inneficient if already in, but cache should make it fast)
+            diversifiedSeqSample.push_back(*dynamic_cast<SequenceMetaSolution*>(jseq_solution)); //adding the jseq solution (inneficient if already in, but cache should make it fast)
             std::cout << "truncated front sample jseq solutions from :" <<diversifiedSeqSample.size()<<std::endl; 
 
         }

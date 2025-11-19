@@ -1,3 +1,6 @@
+#ifndef TIMER_H
+#define TIMER_H
+
 #include <iostream>
 #include <chrono>
 
@@ -14,7 +17,7 @@ public:
     }
 };
 
-int timer_test() {
+inline int timer_test() {
     {
         Timer t("Loop 1");
         for (volatile int i = 0; i < 1000000; ++i);
@@ -27,3 +30,6 @@ int timer_test() {
 
     return 0;
 }
+
+#endif //TIMER_H
+

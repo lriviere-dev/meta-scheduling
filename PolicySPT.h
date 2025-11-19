@@ -156,7 +156,7 @@ public:
             throw std::runtime_error("metasol should already be scored by a policy");
         }    
         return listMetaSolution->front_indexes[scenario_id]; // Return the index of the metasolution in the list that outputs the min sequence  
-        (void)instance; //legacy, in theory requires instanc 
+        (void)instance; //legacy, in theory requires instance 
     }
 
     //compares two sequences to find the preffered one by SPT in a given scenario 
