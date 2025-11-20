@@ -83,6 +83,9 @@ public:
         //metaSolutions.erase(metaSolutions.begin() + index);
         metaSolutions[index] = metaSolutions.back();
 
+        //keep track of updates to score
+        int maxScore = -1;
+
         //update data each scenario where it matters (remember to update position arrays if there is a change)
         for (size_t s = 0; s < scenarios_priority_indexes.size(); ++s) {
             if (this->front_indexes[s] == index){ //we're removing the index used in this scenario: needs update
@@ -96,15 +99,16 @@ public:
                     position = scenarios_position_of_indexes[s][next_id]; //current index of solution to use in this scenario
                 }
                 //update sequences[s], scores[s], front indexs[s] accordingly    
-                this->front_indexes[s] = position; //front indexes keeps track of CURRENT indexes. the truth of og indexes is used only in the BO data (the three arrays input)
+                this->front_indexes[s] = position; //front indexes keeps track of CURRENT indexes so the solution in itself must always be coherent. the information of og indexes is used only in the BO data (the three arrays input)
                 this->scores[s] = metaSolutions[position].scores[s];
                 this->front_sequences[s] = metaSolutions[position].front_sequences[s];
-                if (this->scores[s]>this->score) {this->score = this->scores[s];}//if new sequence prio, update metasolution global/score
             }
             if (this->front_indexes[s] == metaSolutions.size()-1){//if we were using the last one, then obsolete pointer to element to be deleted (case 1 : next in queue was that eleement, so we said the front index was last, but it'll move. )
                 this->front_indexes[s] = index; //then it has been moved to index position
             }
-            
+
+            if (this->scores[s]>maxScore) {maxScore = this->scores[s];}//keep track of worst score (accross all scenarios) 
+
 
             //keep track of id changes (in all scenarios)
             moved_id = scenarios_reverse_positions[s].back();//og_id of last in reverse the last in current list
@@ -113,6 +117,7 @@ public:
             scenarios_reverse_positions[s][index] = moved_id; //keeping track of change in id (actual change to the submetasol list made before loop) reflected in reverse list
             scenarios_reverse_positions[s].pop_back(); //delete entry (mirrors actual list)
         }
+        this->score = maxScore; //updating global score of solution
         metaSolutions.pop_back();
 
         // all changes made by hand, no reset_evaluation();

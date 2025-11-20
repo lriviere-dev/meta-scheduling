@@ -308,14 +308,15 @@ int main(int argc, char* argv[]) {
         }
 
         AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());//inserting all EW+ solutions
-        AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(pure_policy_solution)); //inserting the fifo fully permutable solution to make sure score is at least as good (very likely to be removed by GSEQ)
+        AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(pure_policy_solution)); //inserting the fifo fully permutable solution to make sure (training) score is at least as good (very likely to be removed by GSEQ)
         AllSolutionsGroup[AllSolutionsGroup.size()-1].reset_evaluation();
 
         std::cout << "number of diversifiedsol gseq :" <<AllSolutionsGroup.size()<<std::endl;
 
+        //searching All GSEQ solutions for the best one
         int best_GSEQ_sofar = 0;
         for (int k = 0; k<AllSolutionsGroup.size(); k++){
-            if (!AllSolutionsGroup[k].scored_by){used_policy.evaluate_meta( AllSolutionsGroup[k], trainInstance);}//not checking if scored for correct set here. COuld do but should be fine
+            if ((!AllSolutionsGroup[k].scored_by) || (AllSolutionsGroup[k].scored_for != &trainInstance)){used_policy.evaluate_meta( AllSolutionsGroup[k], trainInstance);}//checking it is scored and by the traininstance
             if (AllSolutionsGroup[k].score <  AllSolutionsGroup[best_GSEQ_sofar].score){best_GSEQ_sofar = k;}
         }
         std::cout<<"Best GSEQ training score : " << used_policy.evaluate_meta(AllSolutionsGroup[best_GSEQ_sofar], trainInstance) << std::endl; //check to see if best-of is usefulll (or rather, if the tested instances benefit from best of. If they don't, could mean SGSEQ are not usefull in general on instances, or could just mean it's a property of the instance.)
