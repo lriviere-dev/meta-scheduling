@@ -2,20 +2,22 @@ import os
 from itertools import product
 
 # Slurm and display parameters
-run_name = "var_test"  # Change this to your run name
+run_name = "Nov_spt_test"  # Change this to your run name
 experiment_mode = 'star'  # "product" for full combinorial of all parameters or "star" to vary only one parameter at a time (note that default param aren't used if product mode)
 OUTDIR = "outputs_" + run_name  
 ERRDIR = "errors_" + run_name  
 MAILTO = "louis.riviere@laas.fr"  # Mail to mail when experiment ends
-MAXMEM = "4000"  # Memory (mega)
-MAXTIME = "10:00:00"  # Time limit
+MAXMEM = "8000"  # Memory (mega)
+MAXTIME = "5:00:00"  # Time limit
 
 # Parameters for experiments: (values list, default value)
-benchfolders = [os.getcwd() + "/instances/" + name for name in ["bench_1p_var"]] #list all folders where to look for instance files
+benchfolders = [os.getcwd() + "/instances/" + name for name in ["bench_1p_var_low"]] #list all folders where to look for instance files
 
+#do not include file name argument
 parameters = {  # parameter_name : [values], default value (for star mode)
     "jseq_time": ([60*60], 60*60), 
     "nb_sampled_scenarios": ([5, 25, 100], 25), 
+    "sampling_iterations": ([5], 5), 
 }
 
 
@@ -67,5 +69,6 @@ with open(f'jobs_{run_name}.sh', 'w') as slurm_file:
     slurm_file.write(f"srun -u `sed ${{SLURM_ARRAY_TASK_ID}}'q;d' {run_name}.key`\n")
 
 # Output the SLURM job script path and jobs file path
+print(f"total number of jobs: {num_jobs}")
 print(f"Job submission script generated: jobs_{run_name}.sh")
 print(f"Job commands written to: {run_name}.key")

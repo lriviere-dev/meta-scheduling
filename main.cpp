@@ -113,21 +113,17 @@ std::vector<SequenceMetaSolution> diversify_step_multi (std::vector<SequenceMeta
     std::vector<SequenceMetaSolution> output_solutions;
     //add initial solutions
     output_solutions.insert(output_solutions.end(), input_solutions.begin(), input_solutions.end()); //insert the original solutions
-    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
     //extra diversify by integrating neighbors of previously added "good quality" solutions.
     output_solutions = diversify_step_neighbours(output_solutions, instance);
-    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
 
     //add jseq research solution (don't do it because I don't want to run a solver a long time again, but we could keep the sequences from earlier)
     // using diversify_step_jseq
 
     //add ideal solutions (the "best" sequence found in each scenario without front considerations (as per limited solver time))
     output_solutions = diversify_step_ideal(output_solutions, instance, ideal_sol);
-    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
 
     //extra diversify by integrating neighbors of previously added "good quality" solutions.
     output_solutions = diversify_step_neighbours(output_solutions, instance);
-    std::cout << "div_step : " << output_solutions.size()<<std::endl;    
 
     //add random solutions (don't add their neighbours) //However, this introduces lots of variability to the result. Maybe skip ?
     //output_solutions = diversify_step_random(output_solutions, instance, rng);
@@ -157,7 +153,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (argc > 3) { // sethirdcond argument
+    if (argc > 3) { // third argument
         try {
             nb_training_scenarios = std::stoi(argv[3]);
         } catch (const std::exception& e) {
@@ -165,7 +161,7 @@ int main(int argc, char* argv[]) {
         }
     }
 
-    if (argc > 4) { // sethirdcond argument
+    if (argc > 4) { 
         try {
             sampling_iterations = std::stoi(argv[4]);
         } catch (const std::exception& e) {
@@ -194,7 +190,7 @@ int main(int argc, char* argv[]) {
 
     //ideal policy and solvers
     IdealPolicy ideal; //ideal policy for bounds
-    IdealSolver ideal_solver(&ideal, (jseq_time>10*60) ? 10*60 : jseq_time); //limiting time spent computing bounds because we don't even use them much.
+    IdealSolver ideal_solver(&ideal); 
 
     //fifo policy and solvers
     //FIFOPolicy used_policy; //fifo policy
@@ -219,7 +215,9 @@ int main(int argc, char* argv[]) {
         std::tie(trainInstance, testInstance) = instance.SampleSplitScenarios(nb_training_scenarios, rng);
 
         //Ideal bounds for score for both training and test instances
+        ideal_solver.setMaxTime((jseq_time>10*60) ? 10*60 : jseq_time);//limiting time for train instance because it is easier, and we're more interested in test score
         ideal_train_solution = ideal_solver.solve(trainInstance);
+        ideal_solver.setMaxTime(jseq_time);
         ideal_test_solution = ideal_solver.solve(testInstance);
         std::cout<<"Ideal training score : " << ideal.evaluate_meta(*ideal_train_solution, trainInstance) << std::endl; 
         std::cout<<"Ideal testing score : " << ideal.evaluate_meta(*ideal_test_solution, testInstance) << std::endl; 
@@ -357,6 +355,10 @@ int main(int argc, char* argv[]) {
             outputs[i]->print();
             std::cout << std::endl;
         }
+
+        //preparing for next itération
+        metaSet.clear();
+
     }
 
 
