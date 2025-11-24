@@ -252,10 +252,6 @@ int main(int argc, char* argv[]) {
         std::vector<SequenceMetaSolution> AllSolutionsSeq;
         AllSolutionsSeq.push_back(*(dynamic_cast<SequenceMetaSolution*>(jseq_solution)));
         std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_multi(AllSolutionsSeq, trainInstance, ideal_train_solution, rng);
-        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_neighbours(AllSolutionsSeq, trainInstance);
-        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_jseq(AllSolutionsSeq, trainInstance, JseqSolver);
-        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_random(AllSolutionsSeq, trainInstance, rng);
-        //std::vector<SequenceMetaSolution> diversifiedSeq = diversify_step_ideal(AllSolutionsSeq, trainInstance, ideal_train_solution);
         std::cout << "number of diversifiedsol jseq :" <<diversifiedSeq.size()<<std::endl;
 
         //BO(JSEQ) -> SJSEQ solution
