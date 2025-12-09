@@ -75,7 +75,10 @@ public:
         if (index >= metaSolutions.size()) {
             throw std::out_of_range("Index to remove is out of possible range");
         }
-                
+        
+        //debug prints
+
+
         size_t next_id;
         int position; //position can be negative (-1 marks unavailability)
         size_t moved_id;
@@ -88,7 +91,7 @@ public:
 
         //update data each scenario where it matters (remember to update position arrays if there is a change)
         for (size_t s = 0; s < scenarios_priority_indexes.size(); ++s) {
-            if (this->front_indexes[s] == index){ //we're removing the index used in this scenario: needs update
+            if (this->front_indexes[s] == index){ //we're removing the index used in this scenario: needs update (There's always at least one scenario where this happens)
                 scenarios_priority_indexes[s].pop(); //delete the most prio (current)
                 next_id = scenarios_priority_indexes[s].front();//find the og index of the next most prio metasolution 
                 position = scenarios_position_of_indexes[s][next_id];//find it's corresponding index in the current metasolution
@@ -103,14 +106,14 @@ public:
                 this->scores[s] = metaSolutions[position].scores[s];
                 this->front_sequences[s] = metaSolutions[position].front_sequences[s];
             }
-            if (this->front_indexes[s] == metaSolutions.size()-1){//if we were using the last one, then obsolete pointer to element to be deleted (case 1 : next in queue was that eleement, so we said the front index was last, but it'll move. )
+            if (this->front_indexes[s] == metaSolutions.size()-1){//else if we were using the last one (or if the next most prio is the last one), then obsolete pointer to element to be deleted (case 1 : next in queue was that eleement, so we said the front index was last, but it'll move. )
                 this->front_indexes[s] = index; //then it has been moved to index position
             }
 
             if (this->scores[s]>maxScore) {maxScore = this->scores[s];}//keep track of worst score (accross all scenarios) 
 
 
-            //keep track of id changes (in all scenarios)
+            //keep track of id changes (in all scenarios)(TODO : remove scenario indexing, can be shared by all scenarios)
             moved_id = scenarios_reverse_positions[s].back();//og_id of last in reverse the last in current list
             scenarios_position_of_indexes[s][moved_id] = index; //the moved id now can be found at index DO BEFORE NEXT LINE FOR EDGE CASE WHERE THEY ARE THE SAME
             scenarios_position_of_indexes[s][scenarios_reverse_positions[s][index]] = -1; //we removed what was in the list at position index (reverse[index]), hence trying to find where that is now should yields -1

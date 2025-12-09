@@ -57,13 +57,20 @@ public:
         std::iota(tmp.begin(), tmp.end(), 0); // Fill 0..N-1 once. (out of loop because elements aren't changed)
         std::vector<MetaSolution*> ms = currentSolution.get_meta_solutions();
 
-        for (size_t s = 0; s < instance.S; ++s) { //initialize for each scenario with indexes sorted by priority // --- s = 0 : tri complet ---
+        for (size_t s = 0; s < instance.S; ++s) { //initialize for each scenario with indexes sorted by priority 
             // Sort with a lambda (descending)
             std::sort(tmp.begin(), tmp.end(), [ms, this, &currentSolution,&s, &instance](size_t a, size_t b) {
                 return policy->isLexicographicallySmaller(ms[a]->front_sequences[s], ms[b]->front_sequences[s], instance, s); 
             });
             // Remplir la queue dans les deux cas
             for (size_t idx : tmp) scenarios_priority_indexes[s].push(idx);
+
+            // Note that due to sorting equalities, it may happen that the existing front_index data on the solution points  to  a different metaSolution with the same front_sequence, and hence the same score too. 
+            // this led to bugs, and loss of a couple days of my life.
+            // To fix this, we reassign the front_indexes according to the new priority queues.
+            // The resulting current_solution is equivalent to the initial one.
+            // Further updates are handled through the queue only hence do not pose coherence problems
+            currentSolution.front_indexes[s] = scenarios_priority_indexes[s].front();
         }
 
         
@@ -86,8 +93,6 @@ public:
 
             int limiting_scenario = policy->find_limiting_scenario(currentSolution, instance);
             int sol_index = currentSolution.front_indexes[limiting_scenario]; 
-            //std::cout << "\t\tLimiting index : " << sol_index << std::endl;
-
             // Update current solution (remove the limiting element)
             currentSolution.remove_meta_solution_index_update(sol_index, scenarios_priority_indexes, scenarios_position_of_indexes , scenarios_reverse_positions );
             removes.push_back(sol_index);//saving the removed solution index to build it back when needed
