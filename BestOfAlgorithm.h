@@ -74,27 +74,22 @@ public:
         }
 
         
+        //Arrays used to keep track of moving indexes 
+        std::vector<int> position_of_indexes; //array[i] gives position (index in current sol) of index i (in original solution : the one used in scenarios_priority_indexes)
+        position_of_indexes.resize(nb_submetasols);
+        for (int i = 0; i < nb_submetasols; ++i) position_of_indexes[i] = i;
 
+        std::vector<size_t> reverse_positions; //reverse of positions (used to find content at each index)
+        reverse_positions.resize(nb_submetasols);
+        for (size_t i = 0; i < nb_submetasols; ++i) reverse_positions[i] = i;
         
-        //Arrays used to keep track of moving indexes
-        std::vector<std::vector<int>> scenarios_position_of_indexes(instance.S); //array[s,i] gives position (index in current sol) of index i (in original solution : the one used in scenarios_priority_indexes)
-        for (size_t s = 0; s < instance.S; ++s) {//instanciation with integers from zero to the number of submetasols for each scenario
-            scenarios_position_of_indexes[s].resize(nb_submetasols);
-            for (int i = 0; i < nb_submetasols; ++i) scenarios_position_of_indexes[s][i] = i;
-        }
-
-        std::vector<std::vector<size_t>> scenarios_reverse_positions(instance.S); //reverse of positions (used to find content at each index)
-        for (size_t s = 0; s < instance.S; ++s) {//instanciation with integers from zero to the number of submetasols
-            scenarios_reverse_positions[s].resize(nb_submetasols);
-            for (size_t i = 0; i < nb_submetasols; ++i) scenarios_reverse_positions[s][i] = i;
-        }
 
         while (currentSolution.get_meta_solutions().size() > 1) {
 
             int limiting_scenario = policy->find_limiting_scenario(currentSolution, instance);
             int sol_index = currentSolution.front_indexes[limiting_scenario]; 
             // Update current solution (remove the limiting element)
-            currentSolution.remove_meta_solution_index_update(sol_index, scenarios_priority_indexes, scenarios_position_of_indexes , scenarios_reverse_positions );
+            currentSolution.remove_meta_solution_index_update(sol_index, scenarios_priority_indexes, position_of_indexes , reverse_positions );
             removes.push_back(sol_index);//saving the removed solution index to build it back when needed
             // Evaluate new score
             int newScore = currentSolution.score; //carefull, Doesn't actually reevaluate because we updated scores by hand !

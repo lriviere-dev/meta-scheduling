@@ -15,7 +15,7 @@ public:
     virtual ~ListMetaSolutionBase() {}
     virtual std::vector<MetaSolution*> get_meta_solutions() const = 0;
     virtual void remove_meta_solution_index(size_t index)  = 0;
-    virtual void remove_meta_solution_index_update(size_t index, std::vector<std::queue<size_t>>& scenarios_priority_indexes, std::vector<std::vector<int>>& scenarios_position_of_indexes,  std::vector<std::vector<size_t>>& scenarios_reverse_positions)  = 0;
+    virtual void remove_meta_solution_index_update(size_t index, std::vector<std::queue<size_t>>& scenarios_priority_indexes, std::vector<int>& scenarios_position_of_indexes,  std::vector<size_t>& scenarios_reverse_positions)  = 0;
 
     //call when modifying solution in place, removes evaluated tag to re trigger evaluation.
     void reset_evaluation() override { // has more things to do than default metasolution re-evaluation
@@ -69,8 +69,8 @@ public:
     //MAINTAINS CORRECT METASOLUTION DATA AND COHERENT INDEXES AT ALL TIMES
     //OG indexes are remembered in BO algorithm using the passed info
     void remove_meta_solution_index_update(size_t index, std::vector<std::queue<size_t>>& scenarios_priority_indexes, 
-                                                              std::vector<std::vector<int>>& scenarios_position_of_indexes, //array[s,i] gives position (index in current sol) of index i (in original solution : the one used in scenarios_priority_indexes)
-                                                              std::vector<std::vector<size_t>>& scenarios_reverse_positions //reverse of positions (used to find content at each index)
+                                                              std::vector<int>& position_of_indexes, //array[i] gives position (index in current sol) of index i (in original solution : the one used in scenarios_priority_indexes)
+                                                              std::vector<size_t>& reverse_positions //reverse of positions (used to find content at each index)
                                                             )  override {
         if (index >= metaSolutions.size()) {
             throw std::out_of_range("Index to remove is out of possible range");
@@ -94,12 +94,12 @@ public:
             if (this->front_indexes[s] == index){ //we're removing the index used in this scenario: needs update (There's always at least one scenario where this happens)
                 scenarios_priority_indexes[s].pop(); //delete the most prio (current)
                 next_id = scenarios_priority_indexes[s].front();//find the og index of the next most prio metasolution 
-                position = scenarios_position_of_indexes[s][next_id];//find it's corresponding index in the current metasolution
+                position = position_of_indexes[next_id];//find it's corresponding index in the current metasolution
                 while (position < 0)//continue popping while solutions were already removed previously (if position is -1)
                 {
                     scenarios_priority_indexes[s].pop();
                     next_id = scenarios_priority_indexes[s].front(); //iterate through sorted list
-                    position = scenarios_position_of_indexes[s][next_id]; //current index of solution to use in this scenario
+                    position = position_of_indexes[next_id]; //current index of solution to use in this scenario
                 }
                 //update sequences[s], scores[s], front indexs[s] accordingly    
                 this->front_indexes[s] = position; //front indexes keeps track of CURRENT indexes so the solution in itself must always be coherent. the information of og indexes is used only in the BO data (the three arrays input)
@@ -111,15 +111,15 @@ public:
             }
 
             if (this->scores[s]>maxScore) {maxScore = this->scores[s];}//keep track of worst score (accross all scenarios) 
-
-
-            //keep track of id changes (in all scenarios)(TODO : remove scenario indexing, can be shared by all scenarios)
-            moved_id = scenarios_reverse_positions[s].back();//og_id of last in reverse the last in current list
-            scenarios_position_of_indexes[s][moved_id] = index; //the moved id now can be found at index DO BEFORE NEXT LINE FOR EDGE CASE WHERE THEY ARE THE SAME
-            scenarios_position_of_indexes[s][scenarios_reverse_positions[s][index]] = -1; //we removed what was in the list at position index (reverse[index]), hence trying to find where that is now should yields -1
-            scenarios_reverse_positions[s][index] = moved_id; //keeping track of change in id (actual change to the submetasol list made before loop) reflected in reverse list
-            scenarios_reverse_positions[s].pop_back(); //delete entry (mirrors actual list)
         }
+        
+        //keep track of id changes (in all scenarios)(TODO : remove scenario indexing, can be shared by all scenarios)
+        moved_id = reverse_positions.back();//og_id of last in reverse the last in current list
+        position_of_indexes[moved_id] = index; //the moved id now can be found at index DO BEFORE NEXT LINE FOR EDGE CASE WHERE THEY ARE THE SAME
+        position_of_indexes[reverse_positions[index]] = -1; //we removed what was in the list at position index (reverse[index]), hence trying to find where that is now should yields -1
+        reverse_positions[index] = moved_id; //keeping track of change in id (actual change to the submetasol list made before loop) reflected in reverse list
+        reverse_positions.pop_back(); //delete entry (mirrors actual list)
+
         this->score = maxScore; //updating global score of solution
         metaSolutions.pop_back();
 
