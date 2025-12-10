@@ -14,7 +14,8 @@ def clean_content(text):
 def extract_info(file_name, text): #returns  list of maybe several lines of content
     #split text into general infos/ several experiments
     common_text, experiments_text = re.split(r'Experiment Start', text, maxsplit=1)
-    experiments_text = re.split(r"Iteration \d",text)[1:]#stripping the empty one in front
+    #experiments_text = re.split(r"Iteration \d",text)[1:]#stripping the empty one in front
+    experiments_text = [m.group(1) for m in re.finditer(r"(Iteration\s+\d+[^§]*?)Solutions dump", text, re.IGNORECASE)]
     dicts = []
     expe_counter = 0
 
