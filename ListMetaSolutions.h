@@ -144,6 +144,21 @@ public:
         return metaSolutionPtrs;
     }
 
+    // returns the number of meta-solutions in the front (based on used indexes) Note that this number has no guarantee to be the smallest front possible
+    size_t get_front_size()   {
+        if (!scored_by){//metasol was not already scored -> error
+            throw std::runtime_error("metasolution must be scored to get front size");
+        }
+        
+        std::vector<int> unique_indexes;//
+        for (int index : front_indexes) {  // check all the front indexes ( indexes of submetasol used in each scenarios)
+            if(std::find(unique_indexes.begin(), unique_indexes.end(), index) == unique_indexes.end()) {
+                unique_indexes.push_back(index);//add index if it's not in output list already
+            }
+        }
+        return unique_indexes.size();
+    }
+
     // returns the simplified metasolution that contains only the expressed submetasolutions
     // takes an instance as input, outputs the front for that instance.  (same training score if it's the training instance eg)
     ListMetaSolution<T>* front_sub_metasolutions(Policy * policy, const DataInstance &instance)   {

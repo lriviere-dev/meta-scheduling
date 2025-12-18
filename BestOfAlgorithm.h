@@ -47,6 +47,7 @@ public:
 
         // Evaluate the initial score
         int bestScore = policy->evaluate_meta(currentSolution, instance);
+        size_t bestFrontSize = currentSolution.get_front_size();
 
         size_t nb_submetasols = currentSolution.get_meta_solutions_size();
 
@@ -93,11 +94,12 @@ public:
             removes.push_back(sol_index);//saving the removed solution index to build it back when needed
             // Evaluate new score
             int newScore = currentSolution.score; //carefull, Doesn't actually reevaluate because we updated scores by hand !
+            size_t newFrontSize = currentSolution.get_front_size();
 
-
-            if (newScore <= bestScore) { // we prefer a smaller output. Note : Doesn't mean there is no redundancy at all nor that list is as small as possible
+            if (newScore <bestScore || (newScore==bestScore && newFrontSize < bestFrontSize)) { // we prefer a smaller front size (implies more robust sequences) output. Note : Doesn't mean there is no redundancy at all nor that list is as small as possible
                 bestScore = newScore;
                 bestRemoves = removes;
+                bestFrontSize = newFrontSize;
             }
         }
 
