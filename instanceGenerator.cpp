@@ -77,8 +77,8 @@ public:
         for (int i = 0; i < N; ++i) {
             global_base_R[i] = r_dist(rng);
             
-            // mode_dist_factor determines how far the two modes are from each other
-            int offset = static_cast<int>(global_base_R[i] * mode_dist_factor);
+            // mode_dist_factor determines how far the two modes are from each other (offset is a fixed value based on the param and half sum)
+            int offset = static_cast<int>(half_sum* mode_dist_factor);
             mode_A_centers[i] = global_base_R[i];
             mode_B_centers[i] = global_base_R[i] + offset;
         }
@@ -157,12 +157,12 @@ public:
 int main() {
     int seed = 42;
     Generator gen(seed);
-    std::string bench_name = "bimodal_r";
+    std::string bench_name = "bimodal2_r";
 
     std::vector<int> ns = {100};
     std::vector<double> prec_densities = {0.01};
-    std::vector<double> variances = { 0.1, 0.3};
-    std::vector<double> mode_dist_factors = {0, 0.5, 1.0};
+    std::vector<double> variances = { 0.1};
+    std::vector<double> mode_dist_factors = {0, 0.3, 0.6, 1.0};
     int nb_base_variants = 5;
 
     std::cout << "Generating instances..." << std::endl;

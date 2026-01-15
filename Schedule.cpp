@@ -5,6 +5,8 @@
 #include "Instance.h"
 #include "Schedule.h"
 
+//when handling other problem, might have to generalize to "Solutions" of which schedule is a type that is composed of start times.
+//All solutions can be evaluated though
 
 Schedule::Schedule(std::vector<int> startTimesArray) : startTimes(startTimesArray) {}
 
@@ -14,19 +16,32 @@ Schedule::Schedule(std::vector<int> startTimesArray) : startTimes(startTimesArra
 int Schedule::evaluate(const DataInstance& instance) {
     // A schedule is evaluated for an instance (scenario is irrelevant, feasibility isn't checked)
     // feasibility (precedences, overlap, release dates) is assumed
+    if (instance.type == InstanceType::SINGLE_MACHINE) {
+        const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //static cast (fast)
+        // for each task, add up end time 
+        int sumci = 0;
+        for (int i = 0; i < sm_instance.N; ++i) {
+            //int lateness = startTimes[i]+instance.durations[i]-instance.dueDates[i];
+            sumci +=  startTimes[i]+sm_instance.durations[i]; //adding end time of task       
+        }
+        return sumci;
+    }
+    else if (instance.type == InstanceType::RCPSP)
+    {
+        const RCPSPInstance& rcpsp_instance = static_cast<const RCPSPInstance&>(instance);
+        // for each task, add up end time 
+        int sumci = 0;
+        for (int i = 0; i < rcpsp_instance.N; ++i) {
+            //int lateness = startTimes[i]+instance.durations[i]-instance.dueDates[i];
+            //int makespan = std::max(makespan, startTimes[i]+instance.durations[i]);
+            sumci +=  startTimes[i]+rcpsp_instance.durations[i]; //adding end time of task       
+        }
+        return sumci;
+    }
     
-    if (instance.N != startTimes.size()) {
-        std::cout << "N = :" << instance.N << "nb tasks = :" << startTimes.size() << std::endl;
-        throw std::invalid_argument("The number of start times should equal the number of tasks (N)");
+    else {
+        throw std::runtime_error("Schedule evaluation not implemented for this instance type.");
     }
-
-    // for each task, add up end time 
-    int sumci = 0;
-    for (int i = 0; i < instance.N; ++i) {
-        //int lateness = startTimes[i]+instance.durations[i]-instance.dueDates[i];
-        sumci +=  startTimes[i]+instance.durations[i]; //adding end time of task       
-    }
-    return sumci;
 }
 
 void Schedule::print() {

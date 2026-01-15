@@ -10,7 +10,53 @@
 #include <algorithm>
 #include <numeric>
 
-class DataInstance { // Instance data : bunch of scenarios
+enum class InstanceType { SINGLE_MACHINE, RCPSP };
+
+// 1. THE INTERFACE (Pure Virtual)
+// No data members here. Only definitions of what an instance must provide.
+class DataInstance {
+public:
+    virtual ~DataInstance() {}
+    InstanceType type;
+    virtual std::string get_file_name() const = 0; //file from which the data comes, helps for debug
+    virtual int getS() const = 0; //number of scenarios
+    virtual int getN() const = 0; //number of jobs (used as an instance size indicator mostly)
+    virtual bool get_prec(int task1, int task2) const = 0; 
+    // Splitting function for scenarios
+    virtual void extractScenarios(const DataInstance* original, const std::vector<int>& indices) = 0;
+    virtual DataInstance* clone() const = 0;
+    virtual void print() const = 0;
+    virtual void print_summary() const = 0;
+
+    //split logic common to all instances
+    std::pair<DataInstance*, DataInstance*> SampleSplitScenarios(int k, std::mt19937 &rng) const {
+        if (k >= this->getS()) throw std::runtime_error("k >= S");
+
+        // 1. Logic: Shuffling indices
+        std::vector<int> indices(getS());
+        std::iota(indices.begin(), indices.end(), 0);
+        std::shuffle(indices.begin(), indices.end(), rng);
+
+        // 2. Creation: Create copies of the correct concrete type
+        DataInstance* train = this->clone();
+        DataInstance* test = this->clone();
+
+        // 3. Partition: Split indices into two sets
+        std::vector<int> train_indices(indices.begin(), indices.begin() + k);
+        std::vector<int> test_indices(indices.begin() + k, indices.end());
+
+        // 4. Delegation: Let the subclass handle the actual data plucking
+        train->extractScenarios(this, train_indices);
+        test->extractScenarios(this, test_indices);
+
+        return {train, test};
+    }
+
+};
+
+
+// 2. THE CONCRETE SINGLE MACHINE CLASS
+class SingleMachineInstance : public DataInstance {
 public:
     std::string file_name;
     int N; //number of tasks
@@ -18,12 +64,17 @@ public:
     std::vector<uint8_t> precedenceConstraints;
     std::vector<int> durations;
     std::vector<std::vector<int>> releaseDates;
-    std::vector<int> dueDates;
+    std::vector<int> dueDates; //unused, but read from file for completeness (artefact from older project versions, could be useful for lateness-based objectives)
 
-    DataInstance() {} //empty constructor
+    inline bool get_prec(int task1, int task2) const override{
+        return precedenceConstraints[task1 * N + task2];
+    }
 
 
-    DataInstance(const std::string& filename) { //constructor : reads from data file
+    SingleMachineInstance() {this->type = InstanceType::SINGLE_MACHINE;}
+
+    SingleMachineInstance(const std::string& filename) { //constructor : reads from data file
+        this->type = InstanceType::SINGLE_MACHINE;
         std::ifstream file(filename);
         if (!file.is_open()) {
             std::cerr << "Unable to open file" << std::endl;
@@ -91,12 +142,35 @@ public:
 
     }
 
-    //more convenient getter for prec constraints
-    inline bool get_prec(int task1, int task2) const {
-        return precedenceConstraints[task1 * N + task2];
+    // Implementing the Interface
+    int getS() const override { return S; }
+    int getN() const override { return N; }
+    std::string get_file_name() const override { return file_name; }
+    void extractScenarios(const DataInstance* original, const std::vector<int>& indices) override {
+        const SingleMachineInstance* orig = dynamic_cast<const SingleMachineInstance*>(original); //cast to correct type
+        if (!orig) {
+            throw std::runtime_error("Invalid instance type for scenario extraction");
+        }
+
+        S = indices.size();
+        N = orig->N;
+        file_name = orig->file_name + "_virtual_split";
+
+        precedenceConstraints = orig->precedenceConstraints; //same for all scenarios
+        durations = orig->durations; //same for all scenarios
+        dueDates = orig->dueDates; //same for all scenarios
+
+        releaseDates.resize(S, std::vector<int>(N));
+        for (size_t i = 0; i < indices.size(); ++i) {
+            releaseDates[i] = orig->releaseDates[indices[i]];
+        }
+    }
+ 
+    DataInstance* clone() const override {
+        return new SingleMachineInstance(*this);
     }
 
-    void print() const {
+    void print() const override {
         std::cout << "Number of tasks: " << N << std::endl;
         std::cout << "Number of scenarios: " << S << std::endl;
 
@@ -130,7 +204,7 @@ public:
         std::cout << std::endl;
     }
 
-    void print_summary() const {
+    void print_summary() const override{
         std::cout << "Number of tasks: " << N << std::endl;
         std::cout << "Number of scenarios: " << S << std::endl;
 
@@ -146,49 +220,24 @@ public:
         std::cout << "Precedence constraints ratio: " << static_cast<double>(c)*2/(N*N) << std::endl;
     }
 
-    std::pair<DataInstance, DataInstance> SampleSplitScenarios(int k, std::mt19937 &rng) {
-        // Check that k is not larger than the available number of scenarios.
-        if (k > S) {
-            throw std::runtime_error("Cannot sample more scenarios than are available in the instance.");
-        }
-
-        // Create a vector with indices 0, 1, ..., instance.S - 1.
-        std::vector<int> indices(S);
-        std::iota(indices.begin(), indices.end(), 0);
-
-        // Shuffle the indices using a random number generator.
-        std::shuffle(indices.begin(), indices.end(), rng);
-
-        //print scenarios used for training
-        std::cout << "Training scenarios : ";
-        for (int i =0; i<k-1; i++){std::cout << indices[i] << ", ";}
-        std::cout << indices[k-1] << std::endl;
+};
 
 
-        // Create copies for training and testing instances.
-        DataInstance trainInstance = *this;
-        DataInstance testInstance = *this;
+// 3. THE RCPSP CLASS
+class RCPSPInstance : public SingleMachineInstance {
+public:
+    int num_resources;
+    std::vector<int> capacities;
+    std::vector<std::vector<int>> usages; //for each ressource, for each task
 
-        // Set the number of scenarios in each instance.
-        trainInstance.S = k;
-        testInstance.S = S - k;
-
-        // Clear and resize releaseDates for both instances.
-        trainInstance.releaseDates.clear();
-        trainInstance.releaseDates.reserve(k);
-        testInstance.releaseDates.clear();
-        testInstance.releaseDates.reserve(S - k);
-
-        // Assign scenarios based on shuffled indices.
-        for (int i = 0; i < k; ++i) {
-            trainInstance.releaseDates.push_back(releaseDates[indices[i]]);
-        }
-        for (int i = k; i < S; ++i) {
-            testInstance.releaseDates.push_back(releaseDates[indices[i]]);
-        }
-
-        return {trainInstance, testInstance};
+    RCPSPInstance(const std::string& filename) : SingleMachineInstance(filename) {
+        this->type = InstanceType::RCPSP;
+        // Add logic here to read the extra RCPSP lines from the file
+    }
+    DataInstance* clone() const override {
+        return new RCPSPInstance(*this);
     }
 };
+
 
 #endif // DATAINSTANCE_H

@@ -39,11 +39,12 @@ public:
     virtual int extract_sub_metasolution_index(const MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const = 0;    
     
     //functions virtual but with default implementation
-    //ERD will be shared by probably all policies
+    //ERD will be shared by probably all policies ()
     virtual Schedule transform_to_schedule(const Sequence& sequence, const DataInstance& instance, int scenario_id) const {
+        SingleMachineInstance const& sm_instance = static_cast<const SingleMachineInstance&>(instance);
         const std::vector<int>& tasks = sequence.get_tasks(); // Get tasks in sequence order
-        const std::vector<int>& releaseDates = instance.releaseDates[scenario_id]; // Access release dates for tasks
-        const std::vector<int>& durations = instance.durations; // Access task durations
+        const std::vector<int>& releaseDates = sm_instance.releaseDates[scenario_id]; // Access release dates for tasks
+        const std::vector<int>& durations = sm_instance.durations; // Access task durations
        
         std::vector<int> startTimes(tasks.size());
 
@@ -65,9 +66,10 @@ public:
     virtual void define_objective(IloEnv env, IloModel& model, 
                         IloIntervalVarArray2& jobs, const DataInstance& instance, 
                         IloIntExprArray& scenario_scores,  IloIntVar& aggregated_objective) const {
+        SingleMachineInstance const& sm_instance = static_cast<const SingleMachineInstance&>(instance);
         //objective here is max sumci. Could be other.
-        int nbScenarios = instance.S;
-        int nbJobs = instance.N;
+        int nbScenarios = sm_instance.getS();
+        int nbJobs = sm_instance.N;
         IloIntExprArray completions(env, nbJobs);
         for (int s = 0; s < nbScenarios; s++) {
             for (int i = 0; i < nbJobs; i++) {
@@ -92,7 +94,7 @@ public:
         if (!metasol.scored_by){//metasol was not already scored -> score it and set front/scores for each scenario
             //special case if metasol is a list of metasol, we recursively have to make sure to evaluate the underlying before
             if (ListMetaSolutionBase* listMeta = dynamic_cast<ListMetaSolutionBase*>(&metasol)) {
-                listMeta->front_indexes.resize(instance.S); //instanciate the indexes of front, is filled in "extract sequence"
+                listMeta->front_indexes.resize(instance.getS()); //instanciate the indexes of front, is filled in "extract sequence"
                 for (auto submeta : listMeta->get_meta_solutions()){
                     if (!submeta->scored_by){ //sub metasolution wasn't scored : evaluate it
                         this->evaluate_meta(*submeta,instance);
@@ -107,11 +109,11 @@ public:
 
             // Iterate over all scenarios in the DataInstance
             int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
-            metasol.scores.resize(instance.S);
-            metasol.front_sequences.resize(instance.S);
+            metasol.scores.resize(instance.getS());
+            metasol.front_sequences.resize(instance.getS());
         
-            for (int k=0; k<instance.S; k++) { //for each scenario, get sequence and score, to aggregate
-                int i = scenario_order ? (*scenario_order)[k] : k; //if a custom order is provided, use it to change scenario exploration order
+            for (int k=0; k<instance.getS(); k++) { //for each scenario, get sequence and score, to aggregate
+                int i = scenario_order ? (*scenario_order)[k] : k; //if a custom order is provided, use it to change scenario exploration order (this can help with early stopping via exit_bound)
                 Sequence seq = this->extract_sequence(metasol, instance, i); 
                 Schedule schedule = this->transform_to_schedule(seq, instance, i);
                 // Evaluate the schedule for the current scenario
@@ -160,7 +162,7 @@ public:
         int maxCost = 0; //could use int-min aswell depends on if we are ok with negative values . sumci can't be negative.
         int limiting_index = 0; 
         int limiting_scenario = 0; 
-        for (int i=0; i<instance.S; i++) { 
+        for (int i=0; i<instance.getS(); i++) { 
             int cost = metasol.scores[i];
             // Update the maximum cost
             if (cost > maxCost) {
@@ -169,8 +171,6 @@ public:
             }
         }
         return limiting_scenario;
-        //obsolete limiting_index = this->extract_sub_metasolution_index(metasol, instance, limiting_scenario);
-        //return limiting_index; 
     }
 
 };

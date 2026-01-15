@@ -53,12 +53,12 @@ public:
 
         //Create arrays to accelerate BO
         //array storing priority queue for each scenario (submetasolutions lexicographically smaller)
-        std::vector<std::queue<size_t>> scenarios_priority_indexes(instance.S); //after initialization, stores ordered indexes of the submetasolution list
+        std::vector<std::queue<size_t>> scenarios_priority_indexes(instance.getS()); //after initialization, stores ordered indexes of the submetasolution list
         std::vector<size_t> tmp(nb_submetasols); //tmp vector to store sorts
         std::iota(tmp.begin(), tmp.end(), 0); // Fill 0..N-1 once. (out of loop because elements aren't changed)
         std::vector<MetaSolution*> ms = currentSolution.get_meta_solutions();
 
-        for (size_t s = 0; s < instance.S; ++s) { //initialize for each scenario with indexes sorted by priority 
+        for (size_t s = 0; s < instance.getS(); ++s) { //initialize for each scenario with indexes sorted by priority 
             // Sort with a lambda (descending)
             std::sort(tmp.begin(), tmp.end(), [ms, this, &currentSolution,&s, &instance](size_t a, size_t b) {
                 return policy->isLexicographicallySmaller(ms[a]->front_sequences[s], ms[b]->front_sequences[s], instance, s); 

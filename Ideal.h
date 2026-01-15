@@ -18,7 +18,7 @@ public:
 
     IdealMetaSolution(const std::vector<Sequence>& sequences, const DataInstance &instance) //requires instance right away
         : sequences(sequences) , instance(instance) {
-            if(instance.S != sequences.size()){
+            if(instance.getS() != sequences.size()){
                 throw std::runtime_error("initializing an IdealMetaSolution with mismatched number of sequences");
             }
         }
@@ -32,7 +32,7 @@ public:
     }
 
     int instance_S(){
-        return instance.S;
+        return instance.getS();
     }
 
     void print() const override{
@@ -59,7 +59,7 @@ public:
     // Override extract_sequence for GroupMetaSolution
     Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override {
         if (auto* idealmeta = dynamic_cast<IdealMetaSolution*>(&metaSolution)) {
-            if (instance.S != idealmeta->instance_S()) { //assert coherence
+            if (instance.getS() != idealmeta->instance_S()) { //assert coherence
                 throw std::runtime_error("Incoherence between IdealMetaSolutions and instance");
             }
             return idealmeta->get_sequence(scenario_id); // just return the ideal sequence for the scenario
@@ -107,14 +107,19 @@ public:
 
     //basically a copy of JSEQSolver.solve
     MetaSolution* solve(const DataInstance& instance) override{
+        if (! (instance.type == InstanceType::SINGLE_MACHINE)) {
+            throw std::runtime_error("FIFOPolicy does not support RCPSP instances.");
+        }
+        const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //ensure correct type
+
 
         // Problem parameters declaration
-        int nbJobs = instance.N;
-        int nbScenarios = instance.S;
-        std::vector<uint8_t> prec = instance.precedenceConstraints;
-        std::vector<int> dueDate = instance.dueDates;
-        std::vector<std::vector<int>> releaseDate= instance.releaseDates;
-        std::vector<int> duration = instance.durations;
+        int nbJobs = sm_instance.getN();
+        int nbScenarios = sm_instance.getS();
+        std::vector<uint8_t> prec = sm_instance.precedenceConstraints;
+        std::vector<int> dueDate = sm_instance.dueDates;
+        std::vector<std::vector<int>> releaseDate= sm_instance.releaseDates;
+        std::vector<int> duration = sm_instance.durations;
 
         char name[32]; // dummy variable to temporarily store name of elements
         std::vector<Sequence> final_solution; //a vector of vector of int i.e a vector of sequences
@@ -143,7 +148,7 @@ public:
             //Setting precedence constraints
             for (int i=0;i<nbJobs;i++) { //for each pair of Jobs
                 for (int j = 0; j < nbJobs; j++) {
-                    if(prec[i*instance.N+j] == 1) { // if precedence constraint
+                    if(prec[i*instance.getN()+j] == 1) { // if precedence constraint
                         for (int s=0;s<nbScenarios;s++) { //enforce for each scenario, as they are not linked anymore
                             model.add(IloEndBeforeStart(env, Jobs[s][i], Jobs[s][j])); //add precedence constranit
                         }
@@ -181,7 +186,7 @@ public:
                 cp.out() << "IdealSolver Gap Value: " << cp.getObjGap() << std::endl;
                 cp.out() << "IdealSolver Solve status: " << cp.getStatus() << std::endl;
                 //cp.out() << "Solution: ";
-                for (int s = 0; s<instance.S; s++){
+                for (int s = 0; s<instance.getS(); s++){
                     std::vector<int> final_s;
                     for(IloIntervalVar a = cp.getFirst(sequences[s]); a.getImpl()!=0; a = cp.getNext(sequences[s], a)){
                         //cp.out() <<  a.getName() << "*"; //cp.domain(a)

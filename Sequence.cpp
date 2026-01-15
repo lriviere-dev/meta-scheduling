@@ -27,7 +27,7 @@ void Sequence::print() const {
 std::string Sequence::to_str() const {
     std::stringstream ss;
     for (size_t i = 0; i < tasks.size(); i++) {
-        if (i != 0) {  // Add a dash between tasks.
+        if (i != 0) { 
             ss << "-";
         }
         ss << tasks[i];
@@ -38,14 +38,12 @@ std::string Sequence::to_str() const {
 //checks precedence validity
 bool Sequence::check_precedence_constraints(const DataInstance& instance) const {
     const std::vector<int>& tasks = get_tasks();
-    const std::vector<uint8_t>& precedenceConstraints = instance.precedenceConstraints;
-
 
     // Check each precedence constraint
     // Check each pair (i, j) where precedenceConstraints[i][j] == 1
     for (size_t i = 0; i < tasks.size()-1; ++i) {
         for (size_t j = i+1; j < tasks.size(); ++j) {
-            if (precedenceConstraints[tasks[j]*instance.N+tasks[i]] == 1) {
+            if (instance.get_prec(tasks[j], tasks[i])) {
                 // Task j must precede task i, but it doesn't
                 return false;
             }
@@ -59,13 +57,12 @@ bool Sequence::check_precedence_constraints(const DataInstance& instance) const 
 Sequence Sequence::fix_precedence_constraints(const DataInstance& instance) const {
     const std::vector<int>& tasks = get_tasks();
     std::vector<int> fixed_tasks = tasks;
-    const std::vector<uint8_t>& precedenceConstraints = instance.precedenceConstraints;
 
     // Check each precedence constraint
     // Check each pair (i, j) where precedenceConstraints[i][j] == 1
     for (size_t i = 0; i < tasks.size()-1; ++i) {
         for (size_t j = tasks.size()-1; j > i; j--) {//going backwards to find the last first
-            if (precedenceConstraints[fixed_tasks[j]*instance.N+fixed_tasks[i]] == 1) {
+            if (instance.get_prec(fixed_tasks[j], fixed_tasks[i])) {
                 // Task j must precede task i, but it doesn't => push it back
                 //move taks i right after task j
                 fixed_tasks.insert(fixed_tasks.begin() + j + 1, fixed_tasks[i]);

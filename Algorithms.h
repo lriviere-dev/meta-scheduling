@@ -58,8 +58,8 @@ public:
     // Implementation of solve method specific to this algorithm
     MetaSolution* solve(const DataInstance& instance) override {
         std::vector<std::vector<int>> groupsVector = {{}};
-        groupsVector[0].resize(instance.N);
-        for (int i=0; i<instance.N; i++){
+        groupsVector[0].resize(instance.getN());
+        for (int i=0; i<instance.getN(); i++){
             groupsVector[0][i]=i;
         }
         GroupMetaSolution* solution = new GroupMetaSolution(groupsVector);
@@ -81,13 +81,18 @@ public:
 
     MetaSolution* solve(const DataInstance& instance) override{
 
+        if (! (instance.type == InstanceType::SINGLE_MACHINE)) {
+            throw std::runtime_error("JSEQSolver does not support RCPSP instances.");
+        }
+        const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //ensure correct type
+
         // Problem parameters declaration
-        int nbJobs = instance.N;
-        int nbScenarios = instance.S;
-        std::vector<uint8_t> prec = instance.precedenceConstraints;
-        std::vector<int> dueDate = instance.dueDates;
-        std::vector<std::vector<int>> releaseDate= instance.releaseDates;
-        std::vector<int> duration = instance.durations;
+        int nbJobs = sm_instance.getN();
+        int nbScenarios = sm_instance.getS();
+        std::vector<uint8_t> prec = sm_instance.precedenceConstraints;
+        std::vector<int> dueDate = sm_instance.dueDates;
+        std::vector<std::vector<int>> releaseDate= sm_instance.releaseDates;
+        std::vector<int> duration = sm_instance.durations;
 
         char name[32]; // dummy variable to temporarily store name of elements
         std::vector<int> final_solution;
@@ -116,7 +121,7 @@ public:
             //Setting precedence constraints
             for (int i=0;i<nbJobs;i++) { //for each pair of Jobs
                 for (int j = 0; j < nbJobs; j++) {
-                    if(prec[i*instance.N+j] == 1) { // if precedence constraint
+                    if(prec[i*instance.getN()+j] == 1) { // if precedence constraint
                         for (int s=0;s<nbScenarios;s++) { //enforce for each scenario, but it would suffice to do it for one scenario.;
                             model.add(IloEndBeforeStart(env, Jobs[s][i], Jobs[s][j])); //add precedence constranit
                         }
@@ -178,14 +183,18 @@ public:
     
     //copy of above, outputs several solutions
     std::vector<MetaSolution*> solve_steps(const DataInstance& instance) {
+        if (! (instance.type == InstanceType::SINGLE_MACHINE)) {
+            throw std::runtime_error("FIFOPolicy does not support RCPSP instances.");
+        }
+        const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //ensure correct type
 
         // Problem parameters declaration
-        int nbJobs = instance.N;
-        int nbScenarios = instance.S;
-        std::vector<uint8_t> prec = instance.precedenceConstraints;
-        std::vector<int> dueDate = instance.dueDates;
-        std::vector<std::vector<int>> releaseDate= instance.releaseDates;
-        std::vector<int> duration = instance.durations;
+        int nbJobs = sm_instance.getN();
+        int nbScenarios = sm_instance.getS();
+        std::vector<uint8_t> prec = sm_instance.precedenceConstraints;
+        std::vector<int> dueDate = sm_instance.dueDates;
+        std::vector<std::vector<int>> releaseDate= sm_instance.releaseDates;
+        std::vector<int> duration = sm_instance.durations;
 
         char name[32]; // dummy variable to temporarily store name of elements
         std::vector<std::vector<int>> final_solutions;
@@ -214,7 +223,7 @@ public:
             //Setting precedence constraints
             for (int i=0;i<nbJobs;i++) { //for each pair of Jobs
                 for (int j = 0; j < nbJobs; j++) {
-                    if(prec[i*instance.N+j] == 1) { // if precedence constraint
+                    if(prec[i*instance.getN()+j] == 1) { // if precedence constraint
                         for (int s=0;s<nbScenarios;s++) { //enforce for each scenario, but it would suffice to do it for one scenario.;
                             model.add(IloEndBeforeStart(env, Jobs[s][i], Jobs[s][j])); //add precedence constranit
                         }
@@ -379,10 +388,10 @@ public:
             throw std::runtime_error("Initial solution is not of type SequenceMetaSolution!");
         }
 
-        std::vector<int> scenario_order(instance.S); //array given to solve_savesteps to prioritize scenarios more likely to trigger bound (scenario_order[0] : scenario to try first)
-        std::vector<int> position(instance.S); //reverse array giving (postion[0]: when to try scenario 0, or where it is in scenario_order)
+        std::vector<int> scenario_order(instance.getS()); //array given to solve_savesteps to prioritize scenarios more likely to trigger bound (scenario_order[0] : scenario to try first)
+        std::vector<int> position(instance.getS()); //reverse array giving (postion[0]: when to try scenario 0, or where it is in scenario_order)
 
-        for (int i = 0; i < instance.S; ++i) { //init arrays
+        for (int i = 0; i < instance.getS(); ++i) { //init arrays
             scenario_order[i] = i;
             position[i] = i;
         }
@@ -481,7 +490,7 @@ public:
             step++;
             improvement = false;
 
-            for (int i = 0; i < instance.N-1; i++) { // for each possible swap index
+            for (int i = 0; i < instance.getN()-1; i++) { // for each possible swap index
                 try {
                     // Generate a new candidate solution
                     SequenceMetaSolution* candidate = currentSolution->gen_swap_neighbor(i, instance); 

@@ -27,6 +27,12 @@ public:
     // How to get a sequence from the meta solutions
     Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override{
         if(metaSolution.scored_by){throw std::runtime_error("Extracting sequence but metasol is already scored.");} //if already scored, why don't we just get the stored result?
+ 
+        if (! (instance.type == InstanceType::SINGLE_MACHINE)) {
+            throw std::runtime_error("FIFOPolicy does not support RCPSP instances.");
+        }
+        const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //ensure correct type
+
 
         Sequence output; 
         bool set_output = false;
@@ -34,11 +40,11 @@ public:
         if (auto* groupMeta = dynamic_cast<GroupMetaSolution*>(&metaSolution)) {
             // Handle GroupMetaSolution Metasolutions
 
-            std::vector<int> sequence(instance.N); //stores output
+            std::vector<int> sequence(sm_instance.getN()); //stores output
             int c = 0; // counter for index
-            const auto& releaseDates = instance.releaseDates[scenario_id];
-            const auto& durations = instance.durations;
-            const auto& prec = instance.precedenceConstraints;
+            const auto& releaseDates = sm_instance.releaseDates[scenario_id];
+            const auto& durations = sm_instance.durations;
+            const auto& prec = sm_instance.precedenceConstraints;
             std::priority_queue<int, std::vector<int>, std::greater<int>> free_nodes; // sorted queue of available (both release and precednece wise) nodes (default comparison by index) sorted by spt (through index of group); 
             int time  = 0; //tracks time during simulation to see if tasks are ready
             std::vector<int> incoming_edges_nb; //counts number of edge into each node (prevents the corresponding task to run since prec constraints)
@@ -69,10 +75,10 @@ public:
                 for (size_t i=0; i<group.size();  i++) { //!!! We use index "0" for example to refer to the 0th task in group vector (it also indicates it has the smallest duration)!
                     //for each tasks list nodes with an incoming edge
                     for (size_t j =0; j<group.size(); j++){
-                        if (prec[group[j] * instance.N + group[i]]){ //if the task at index j should be before task at index i,
+                        if (prec[group[j] * instance.getN() + group[i]]){ //if the task at index j should be before task at index i,
                             incoming_edges_nb[i]++;
                         }
-                        if (prec[group[i] * instance.N + group[j]]){ 
+                        if (prec[group[i] * instance.getN() + group[j]]){ 
                             outgoing_edges[i].push_back(j); 
                         }                        
                     }
@@ -161,8 +167,13 @@ public:
 
     //compares two sequences to find the preffered one by SPT in a given scenario 
     bool isLexicographicallySmaller(const Sequence& seq1, const Sequence& seq2, const DataInstance& instance, int scenario_id) const {
-        const auto& releaseDates = instance.releaseDates[scenario_id]; 
-        const auto& durations = instance.durations; 
+        if (! (instance.type == InstanceType::SINGLE_MACHINE)) {
+            throw std::runtime_error("FIFOPolicy does not support RCPSP instances.");
+        }
+        const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //ensure correct type
+
+        const auto& releaseDates = sm_instance.releaseDates[scenario_id]; 
+        const auto& durations = sm_instance.durations; 
         const auto& tasks1 = seq1.get_tasks(); // Cache tasks of seq1
         const auto& tasks2 = seq2.get_tasks(); // Cache tasks of seq2
         size_t size = tasks1.size(); // Assuming both sequences have the same size
