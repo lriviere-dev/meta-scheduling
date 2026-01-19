@@ -223,21 +223,94 @@ public:
 };
 
 
-// 3. THE RCPSP CLASS
 class RCPSPInstance : public SingleMachineInstance {
 public:
     int num_resources;
     std::vector<int> capacities;
-    std::vector<std::vector<int>> usages; //for each ressource, for each task
+    // usages[task_index][resource_index]
+    std::vector<std::vector<int>> usages; 
 
-    RCPSPInstance(const std::string& filename) : SingleMachineInstance(filename) {
+    RCPSPInstance(const std::string& filename) {
         this->type = InstanceType::RCPSP;
-        // Add logic here to read the extra RCPSP lines from the file
-    }
+        this->file_name = filename;
+        this->S = 1;
+
+        std::ifstream file(filename);
+        if (!file.is_open()) throw std::runtime_error("Could not open file: " + filename);
+
+        std::string line;
+        while (std::getline(file, line)) {
+            // Robust Job Count Parsing
+            if (line.find("jobs (incl. supersource/sink )") != std::string::npos) {
+                size_t pos = line.find_last_of(':');
+                if (pos != std::string::npos) {
+                    N = std::stoi(line.substr(pos + 1));
+                }
+                precedenceConstraints.assign(N * N, 0);
+                durations.resize(N);
+                usages.resize(N);
+            }
+            // Robust Resource Count Parsing
+            else if (line.find("- renewable") != std::string::npos) {
+                std::stringstream ss(line);
+                std::string temp;
+                while (ss >> temp && temp != ":"); // Skip until colon
+                ss >> num_resources;
+                capacities.resize(num_resources);
+            }
+            else if (line.find("PRECEDENCE RELATIONS:") != std::string::npos) {
+                std::getline(file, line); // Skip header row
+                for (int i = 0; i < N; ++i) {
+                    if (!std::getline(file, line)) break;
+                    std::stringstream ss(line);
+                    int jobIdx, mode, numSuccessors;
+                    if (!(ss >> jobIdx >> mode >> numSuccessors)) continue;
+                    for (int j = 0; j < numSuccessors; ++j) {
+                        int successor;
+                        ss >> successor;
+                        precedenceConstraints[(jobIdx - 1) * N + (successor - 1)] = 1;
+                    }
+                }
+            }
+            else if (line.find("REQUESTS/DURATIONS:") != std::string::npos) {
+                std::getline(file, line); // Skip header
+                std::getline(file, line); // Skip separator (-------)
+                for (int i = 0; i < N; ++i) {
+                    if (!std::getline(file, line)) break;
+                    std::stringstream ss(line);
+                    int jobIdx, mode;
+                    ss >> jobIdx >> mode >> durations[i];
+                    usages[i].resize(num_resources);
+                    for (int r = 0; r < num_resources; ++r) {
+                        ss >> usages[i][r];
+                    }
+                }
+            }
+            else if (line.find("RESOURCEAVAILABILITIES:") != std::string::npos) {
+                std::getline(file, line); // Skip header (R1 R2...)
+                std::getline(file, line); // Read the capacity values
+                std::stringstream ss(line);
+                for (int r = 0; r < num_resources; ++r) {
+                    ss >> capacities[r];
+                }
+            }
+        }
+        releaseDates.assign(S, std::vector<int>(N, 0));
+        dueDates.assign(N, 0);
+        file.close();
+    }   
+
     DataInstance* clone() const override {
         return new RCPSPInstance(*this);
     }
-};
 
+    void print_summary() const override {
+        SingleMachineInstance::print_summary();
+        std::cout << "Resources: " << num_resources << std::endl;
+        std::cout << "Capacities: ";
+        for (int c : capacities) std::cout << c << " ";
+        std::cout << std::endl;
+    }
+};
 
 #endif // DATAINSTANCE_H
