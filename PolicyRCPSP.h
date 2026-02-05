@@ -108,16 +108,21 @@ public:
     Sequence extract_sequence(MetaSolution& metaSolution, const DataInstance& instance, int scenario_id) const override{
         if(metaSolution.scored_by){throw std::runtime_error("Extracting sequence but metasol is already scored.");} //if already scored, why don't we just get the stored result?
 
+        if (! (instance.type == InstanceType::RCPSP)) {
+            throw std::runtime_error("RCPSPPolicy does not support SINGLE MACHINE instances.");
+        }
+        const RCPSPInstance& rcpsp_instance = static_cast<const RCPSPInstance&>(instance); //ensure correct type
+
         Sequence output; 
         bool set_output = false;
         // Try to cast to GroupMetaSolution
         if (auto* groupMeta = dynamic_cast<GroupMetaSolution*>(&metaSolution)) {
             // Handle GroupMetaSolution
 
-            std::vector<int> sequence(instance.N);
+            std::vector<int> sequence(rcpsp_instance.N);
             int c = 0; // counter for index
-            const auto& releaseDates = instance.releaseDates[scenario_id];
-            const auto& prec = instance.precedenceConstraints;
+            const auto& releaseDates = rcpsp_instance.releaseDates[scenario_id];
+            const auto& prec = rcpsp_instance.precedenceConstraints;
             std::set<int, std::less<int>> free_nodes; // sorted set of available nodes (default comparison by index)  std::vector<int> incoming_edges_nb; 
             std::vector<int> incoming_edges_nb; 
             std::vector<std::vector<int>> outgoing_edges; 
@@ -215,7 +220,12 @@ public:
 
     //compares two sequences to find the preffered one by the policy in a given scenario 
     bool isLexicographicallySmaller(const Sequence& seq1, const Sequence& seq2, const DataInstance& instance, int scenario_id) const {
-        const auto& releaseDates = instance.releaseDates[scenario_id]; 
+        if (! (instance.type == InstanceType::RCPSP)) {
+            throw std::runtime_error("RCPSPPolicy does not support SINGLE MACHINE instances.");
+        }
+        const RCPSPInstance& rcpsp_instance = static_cast<const RCPSPInstance&>(instance); //ensure correct type
+
+        const auto& releaseDates = rcpsp_instance.releaseDates[scenario_id]; 
         const auto& tasks1 = seq1.get_tasks(); // Cache tasks of seq1
         const auto& tasks2 = seq2.get_tasks(); // Cache tasks of seq2
         size_t size = tasks1.size(); // Assuming both sequences have the same size
@@ -256,7 +266,7 @@ public:
 
         // Aggregate objectives across scenarios
         for (int s = 0; s < nbScenarios; s++)
-            model.add(aggregated_objective >= scenario_scores[s]);
+            model.add(aggregated_objective >= scenario_scores[s]); //max score among scenarios
         model.add(IloMinimize(env, aggregated_objective));
     }
 

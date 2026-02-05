@@ -62,7 +62,7 @@ public:
         for (int i=0; i<instance.getN(); i++){
             groupsVector[0][i]=i;
         }
-        GroupMetaSolution* solution = new GroupMetaSolution(groupsVector);
+        GroupMetaSolution* solution = new GroupMetaSolution(groupsVector); //uses the fully permutable group, i.e. no decisions made
         return solution;
     }
 };
@@ -81,78 +81,171 @@ public:
 
     MetaSolution* solve(const DataInstance& instance) override{
 
-        if (! (instance.type == InstanceType::SINGLE_MACHINE)) {
-            throw std::runtime_error("JSEQSolver does not support RCPSP instances.");
-        }
-        const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //ensure correct type
-
-        // Problem parameters declaration
-        int nbJobs = sm_instance.getN();
-        int nbScenarios = sm_instance.getS();
-        std::vector<uint8_t> prec = sm_instance.precedenceConstraints;
-        std::vector<int> dueDate = sm_instance.dueDates;
-        std::vector<std::vector<int>> releaseDate= sm_instance.releaseDates;
-        std::vector<int> duration = sm_instance.durations;
+        //variables common to all instance types
+        int nbJobs = instance.getN();
+        int nbScenarios = instance.getS();
+        std::vector<uint8_t> prec = instance.precedenceConstraints;
 
         char name[32]; // dummy variable to temporarily store name of elements
-        std::vector<int> final_solution;
+        std::vector<int> final_solution; // store final solution (always a sequence)
         int limit_time = max_time; // max solve time in seconds
+        IloEnv env; //environment variabel
+        IloIntExprArray scenario_scores(env, instance.getS());//scores in each scenario
+        IloIntVar aggregated_objective(env); //score aggregated over scenarios
+        IloModel model(env);
+        // The sequence variable will simply record the relative ordering of tasks.
+        IloIntervalSequenceVarArray sequences(env, nbScenarios);
+        IloSolution sol1(env);
 
-        //Create environment, model problem
-        IloEnv env;
         try {
-            IloModel model(env);
-            //std::cout  << "Modeling... \n" ;
+            if (instance.type == InstanceType::SINGLE_MACHINE){
+                
+                const SingleMachineInstance& sm_instance = static_cast<const SingleMachineInstance&>(instance); //cast to specific type to access recquired data
+                //model variables/constraints specific to single machine instances
 
-            //Declaring the interval variables
-            IloIntervalVarArray2 Jobs(env,nbScenarios);
-            //std::cout  << "   Declaring interval variables... \n" ;
-            for (int s=0;s<nbScenarios;s++) { // for each scenario
-                Jobs[s] = IloIntervalVarArray(env,nbJobs);
-                for (int i=0;i<nbJobs;i++) { //for each Jobs
-                    sprintf(name,"Job_%d,Scen_%d",i,s);
-                    Jobs[s][i] = IloIntervalVar(env, duration[i], name); //creating var with duration
-                    Jobs[s][i].setStartMin(releaseDate[s][i]); //setting release date
-    //                std::cout << "Set min start date for task"<< i << " in scenario " << s << ":" << releaseDate[(rVar)?s:0][i] << std::endl;
+                // instance specific parameters declaration (even if common to several instances)
+                std::vector<int> dueDate = sm_instance.dueDates;
+                std::vector<std::vector<int>> releaseDate = sm_instance.releaseDates;
+                std::vector<int> duration = sm_instance.durations;
+
+                //Declaring the interval variables
+                IloIntervalVarArray2 Jobs(env,nbScenarios);
+                for (int s=0;s<nbScenarios;s++) { // for each scenario
+                    Jobs[s] = IloIntervalVarArray(env,nbJobs);
+                    for (int i=0;i<nbJobs;i++) { //for each Jobs
+                        sprintf(name,"Job_%d,Scen_%d",i,s);
+                        Jobs[s][i] = IloIntervalVar(env, duration[i], name); //creating var with duration
+                        Jobs[s][i].setStartMin(releaseDate[s][i]); //setting release date
+                    }
                 }
-            }
 
-            //std::cout  << "   Precedence constraints... \n" ;
-            //Setting precedence constraints
-            for (int i=0;i<nbJobs;i++) { //for each pair of Jobs
-                for (int j = 0; j < nbJobs; j++) {
-                    if(prec[i*instance.getN()+j] == 1) { // if precedence constraint
-                        for (int s=0;s<nbScenarios;s++) { //enforce for each scenario, but it would suffice to do it for one scenario.;
-                            model.add(IloEndBeforeStart(env, Jobs[s][i], Jobs[s][j])); //add precedence constranit
+                //Setting precedence constraints
+                for (int i=0;i<nbJobs;i++) { //for each pair of Jobs
+                    for (int j = 0; j < nbJobs; j++) {
+                        if(prec[i*instance.getN()+j] == 1) { // if precedence constraint
+                            for (int s=0;s<nbScenarios;s++) { //enforce for each scenario, but it would suffice to do it for one scenario.;
+                                model.add(IloEndBeforeStart(env, Jobs[s][i], Jobs[s][j])); //add precedence constranit
+                            }
                         }
                     }
                 }
-            }
 
-            //std::cout  << "   Parallel constraints... \n" ;
-            //Limit parallel execution (one machine)
-            IloIntervalSequenceVarArray sequences(env, nbScenarios);
-            for (int s = 0; s < nbScenarios; s++) {//for each scenario
-                sequences[s] = IloIntervalSequenceVar(env, Jobs[s]); //Jobs associated with scenario s cannot overlap
-                model.add(IloNoOverlap(env, sequences[s]));
-                if (s > 0) {
-                    model.add(IloSameSequence(env, sequences[s], sequences[0])); // force sequence to be the same
+                //std::cout  << "   Parallel constraints... \n" ;
+                //Limit parallel execution (one machine)
+                for (int s = 0; s < nbScenarios; s++) {//for each scenario
+                    sequences[s] = IloIntervalSequenceVar(env, Jobs[s]); //Jobs associated with scenario s cannot overlap
+                    model.add(IloNoOverlap(env, sequences[s]));
+                    if (s > 0) {
+                        model.add(IloSameSequence(env, sequences[s], sequences[0])); // force sequence to be the same
+                    }
                 }
+                //delegate objective definition to policy
+                policy->define_objective(env, model, Jobs, instance, scenario_scores, aggregated_objective);
+            }
+            else if (instance.type == InstanceType::RCPSP) { //written by AI using single machine and CPO RCPSP examples as basis
+                const RCPSPInstance& rcpsp_instance = static_cast<const RCPSPInstance&>(instance);
+                
+                // 1. Parameters extraction
+                int nbResources = rcpsp_instance.num_resources;
+                                
+                // 2. Resource Setup (Cumul Functions)
+                // We create resources per scenario because capacities or demands might vary by scenario
+                std::vector<IloCumulFunctionExprArray> resources(nbScenarios);
+                IloIntArray capacities(env, nbResources);
+                for (int j = 0; j < nbResources; j++) {
+                    capacities[j] = rcpsp_instance.capacities[j];
+                }
+
+                // 3. Declare Interval Variables
+                IloIntervalVarArray2 Jobs(env, nbScenarios);
+                for (int s = 0; s < nbScenarios; s++) { //for each scenario
+                    Jobs[s] = IloIntervalVarArray(env, nbJobs); //make  jobs arrays
+                    resources[s] = IloCumulFunctionExprArray(env, nbResources); 
+                    
+                    for (int j = 0; j < nbResources; j++) {
+                        resources[s][j] = IloCumulFunctionExpr(env);
+                    }
+
+                    for (int i = 0; i < nbJobs; i++) {
+                        sprintf(name, "Job_%d,Scen_%d", i, s);
+                        // RCPSP tasks usually have fixed duration from instance
+                        Jobs[s][i] = IloIntervalVar(env, rcpsp_instance.durations[i], name);
+                        Jobs[s][i].setStartMin(rcpsp_instance.releaseDates[s][i]);//release date varies by scenario
+
+                        // Resource Requirements (Pulse)
+                        for (int r = 0; r < nbResources; r++) {
+                            int demand = rcpsp_instance.usages[i][r];
+                            if (demand > 0) {
+                                resources[s][r] += IloPulse(Jobs[s][i], demand);
+                            }
+                        }
+                    }
+
+                    // Add Resource Capacity Constraints for this scenario
+                    for (int r = 0; r < nbResources; r++) {
+                        model.add(resources[s][r] <= capacities[r]);
+                    }
+                }
+
+                // 4. Precedence Constraints
+                for (int i = 0; i < nbJobs; i++) {
+                    for (int j = 0; j < nbJobs; j++) {
+                        // Using the same precedence matrix logic as your Single Machine snippet
+                        if (rcpsp_instance.precedenceConstraints[i * nbJobs + j] == 1) {
+                            for (int s = 0; s < nbScenarios; s++) {
+                                model.add(IloEndBeforeStart(env, Jobs[s][i], Jobs[s][j])); //still applies for tasks with precedence constraints
+                            }
+                        }
+                    }
+                }
+
+                // 5. Sequence Variables (For Solution Extraction)
+                // IMPORTANT: We do NOT add IloNoOverlap here. 
+                for (int s = 0; s < nbScenarios; s++) {
+                    sequences[s] = IloIntervalSequenceVar(env, Jobs[s]);
+                    // Ensuring consistent ordering across scenarios is still required
+                    if (s > 0) {
+                        model.add(IloSameSequence(env, sequences[s], sequences[0]));
+                    }
+                    // model.add(IloNoOverlap(env, sequences[s])); //todo : adding just to check
+                    // 4. Ensuring Sequencesand jobs share order : for each job, eitheh it's successor is null or its start time is after its own start time 
+                    for (int i = 0; i < nbJobs; i++) {
+                        model.add(IloStartOfPrevious(sequences[s], Jobs[s][i], 0) <= IloStartOf(Jobs[s][i])); //when prev is nul, we take 0 so constraint holds
+                    }
+                }
+
+                
+                // 6. Objective definition delegated to policy
+                policy->define_objective(env, model, Jobs, instance, scenario_scores, aggregated_objective);
+
+                //debug : starting osl
+                for (int s = 0; s < nbScenarios; s++) {
+                    for (IloInt i = 0; i < nbJobs; i++) {
+                            sol1.setStart(Jobs[s][i], 10+i*10);
+                    }
+                }
+
+            }
+            else {
+                throw std::runtime_error("JSEQSolver does not support this instance type.");
             }
 
-            //delegate objective definition to policy
-            IloIntExprArray scenario_scores(env, nbScenarios);
-            IloIntVar aggregated_objective(env);
-            policy->define_objective(env, model, Jobs, instance, scenario_scores, aggregated_objective);
-
+            //Search for a solution and extract it (common to all instances (based on sequences))
             //Create an instance of IloCP
             IloCP cp(model);
+
+            //debug
+            //set starting point (debug)
+            cp.setStartingPoint(sol1);
+
+
+            cp.setParameter(IloCP::WarningLevel, instance.getN()>=20 ? 0 : 3); //suppress warnings for large instances, keep them for small ones for debug
             cp.setParameter(IloCP::LogVerbosity,IloCP::Quiet);
+            // cp.setParameter(IloCP::LogVerbosity,IloCP::Verbose);
             cp.setParameter(IloCP::TimeLimit, limit_time); 
             cp.setParameter(IloCP::Workers, 1); //set workers to 1
             //std::cout  << "Solving... \n" ;
 
-            //Search for a solution
             cp.out() << "Starting JSEQSolver solve. Max time = " << max_time << "s" << std::endl;
             if (cp.solve()) {
                 cp.out() << "JSEQSolver Obj Value: " << cp.getObjValue() << std::endl;
@@ -161,12 +254,23 @@ public:
                 //cp.out() << "Solution: ";
 
                 for(IloIntervalVar a = cp.getFirst(sequences[0]); a.getImpl()!=0; a = cp.getNext(sequences[0], a)){
-                    //cp.out() <<  a.getName() << "*"; //cp.domain(a)
+                    // cp.out() <<  a.getName() << "*"; //cp.domain(a)
                     std::string temp(a.getName());
-                    std::string task_number_str= temp.substr(4, temp.find(',') - 4); // Output: 2                   
+                    std::string task_number_str= temp.substr(4, temp.find(',') - 4); // Output: 2    
+                    // cp.out() << " (Task " << task_number_str << ") ";               
                     final_solution.push_back(std::atoi(task_number_str.c_str()));
                     //cp.out() << cp.domain(a) << std::endl;
                     }
+                //debug : print start times of each interval in each scenario
+                // for (int s = 0; s < nbScenarios; s++) {
+                //     cp.out() << "\nScenario " << s << " Start Times: ";
+                //     for (IloIntervalVar a = cp.getFirst(sequences[s]); a.getImpl() != 0; a = cp.getNext(sequences[s], a)) {
+                //         std::string temp(a.getName());
+                //         std::string task_number_str= temp.substr(4, temp.find(',') - 4); // Output: 2    
+                //         cp.out() << task_number_str << "(" << cp.getStart(a) << ") ";
+                //     }
+                //     cp.out() << std::endl;
+                // }
                 //cp.out() <<  std::endl; //cp.domain(a)
             } else {
                 cp.out() << "No solution found. " << std::endl;

@@ -12,6 +12,8 @@
 #include "Ideal.h"
 #include "Timer.h"
 
+#include "PolicyRCPSP.h"
+
 #include <iostream>
 #include <string>
 #include <stdexcept> 
@@ -133,7 +135,9 @@ std::vector<SequenceMetaSolution> diversify_step_multi (std::vector<SequenceMeta
 
 int main(int argc, char* argv[]) {
     // Default parameter values
-    std::string file_name = "instances/test.data";  // Default file for tests
+    // std::string file_name = "instances/test.data";  // Default file for tests
+    std::string file_name = "instances/sample_test_folder/rcpsp_test_N7_S1000_gamma3.data";  // Default file for tests with RCPSP
+    // std::string file_name = "instances/sample_test_folder/j1201_1_N122_S1000_gamma3.data";  // Default file for tests with RCPSP
     int jseq_time = 10;                     // Time allocated to jseq solver (seconds)
     int nb_training_scenarios = 1;  //this is the number of training scenarios : S
     int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
@@ -183,20 +187,33 @@ int main(int argc, char* argv[]) {
 
     std::cout << std:: endl << "==== Instance Summary ===" << std::endl;
 
-    SingleMachineInstance instance(file_name);
+    //SingleMachineInstance instance(file_name);
+    RCPSPInstance instance(file_name);
+    if (instance.type == InstanceType::SINGLE_MACHINE) {
+        std::cout << "Instance type : Single Machine" << std::endl;
+    } 
+    else if (instance.type == InstanceType::RCPSP) {
+        std::cout << "Instance type : RCPSP" << std::endl;
+    } else {
+        throw std::runtime_error("Unsupported instance type in main.cpp");
+    }
+
     instance.print_summary();
 
     std::cout << std:: endl << "==== Experiment Start ===" << std::endl;
 
     //ideal policy and solvers
-    IdealPolicy ideal; //ideal policy for bounds
+    // IdealPolicy ideal; //ideal policy for bounds
+    IdealRCPSPPolicy ideal; //ideal policy (RCPSP)
     IdealSolver ideal_solver(&ideal); 
 
-    //fifo policy and solvers
+    // policy 
     //FIFOPolicy used_policy; //fifo policy
-    SPTPolicy used_policy; //spt policy
+    // SPTPolicy used_policy; //spt policy
+    RCPSPPolicy used_policy; //rcpsp policy
     std::cout << "Policy : " << used_policy.name << std::endl;
 
+    //solvers
     PurePolicySolver PolicySolver(&used_policy);
     JSEQSolver JseqSolver(&used_policy, jseq_time);
     EssweinAlgorithm EWSolver(&used_policy);
@@ -214,6 +231,8 @@ int main(int argc, char* argv[]) {
         DataInstance *trainInstance, *testInstance;
         std::tie(trainInstance, testInstance) = instance.SampleSplitScenarios(nb_training_scenarios, rng);
 
+        // trainInstance->print(); //for debug mostly (large print)
+
         //Ideal bounds for score for both training and test instances
         ideal_solver.setMaxTime((jseq_time>10*60) ? 10*60 : jseq_time);//limiting time for train instance because it is easier, and we're more interested in test score
         ideal_train_solution = ideal_solver.solve(*trainInstance);
@@ -223,6 +242,8 @@ int main(int argc, char* argv[]) {
         std::cout<<"Ideal testing score : " << ideal.evaluate_meta(*ideal_test_solution, *testInstance) << std::endl; 
         std::cout<<"Ideal testing 90q : " << ideal_test_solution->get_quantile(0.9, ideal, *testInstance) << std::endl; 
         std::cout<<"Ideal testing scenario scores : " << vec_to_string(ideal_test_solution->get_scores(ideal,*testInstance)) << std::endl; 
+
+
 
         //Pure policy -> Fully reactive solution
         pure_policy_solution = PolicySolver.solve(*trainInstance); //resolving isn't necessary as the solution is identical no matter the input training scenarios, however, solve time is negligeable
