@@ -9,6 +9,8 @@
 #include <random>
 #include <algorithm>
 #include <numeric>
+#include <regex>
+#include <string>
 
 enum class InstanceType { SINGLE_MACHINE, RCPSP };
 
@@ -76,23 +78,62 @@ virtual void print_precedences() const {
         std::cout << "Precedence constraints ratio: " << static_cast<double>(c)*2/(N*N) << std::endl;
     };
 
+    int getClusterCount() const {
+        // Regex looks for "cluster" followed by one or more digits (\d+)
+        std::regex cluster_regex("_cluster(\\d+)");
+        std::smatch match;
+
+        if (std::regex_search(file_name, match, cluster_regex)) {
+            return std::stoi(match[1].str());
+        }
+        std::cout << "Warning: No cluster information found in file name. Defaulting to 0 clusters (random sampling).\n";
+        // Default fallback if "cluster" is not found in the name
+        return 0; 
+    }
+
     //split logic common to all instances
-    std::pair<DataInstance*, DataInstance*> SampleSplitScenarios(int k, std::mt19937 &rng) const {
-        if (k >= this->getS()) throw std::runtime_error("k >= S");
+    std::pair<DataInstance*, DataInstance*> SampleSplitScenarios(int k, std::mt19937 &rng, bool use_clusters = false) const {
+        if (k >= this->getS()) throw std::runtime_error("k >= S : cannot split scenarios, not enough scenarios for training");
 
-        // 1. Logic: Shuffling indices
-        std::vector<int> indices(getS());
-        std::iota(indices.begin(), indices.end(), 0);
-        std::shuffle(indices.begin(), indices.end(), rng);
+        std::vector<int> train_indices;
+        std::vector<int> test_indices;
+        
+        if (use_clusters) { 
+            // 1a. Identify cluster centers (the first C scenarios)
+            int C = this->getClusterCount(); //default return is 0 if no cluster info in name, so it falls back to pure random sampling if not specified
+            int centers_to_take = std::min(k, C);
 
-        // 2. Creation: Create copies of the correct concrete type
+            // Take the centers first
+            for (int i = 0; i < centers_to_take; ++i) {
+                train_indices.push_back(i);
+            }
+
+            // 1b. Shuffle the remaining scenarios (those not used as centers)
+            std::vector<int> remaining_indices;
+            for (int i = centers_to_take; i < S; ++i) {
+                remaining_indices.push_back(i);
+            }
+            std::shuffle(remaining_indices.begin(), remaining_indices.end(), rng);
+
+            // 1c. Fill the rest of the training set 'k' and the test set
+            int needed_for_train = k - centers_to_take;
+            train_indices.insert(train_indices.end(), remaining_indices.begin(), remaining_indices.begin() + needed_for_train);
+            test_indices.insert(test_indices.end(), remaining_indices.begin() + needed_for_train, remaining_indices.end());
+            
+        } else {
+            // Original logic: Pure random shuffle
+            std::vector<int> indices(S);
+            std::iota(indices.begin(), indices.end(), 0);
+            std::shuffle(indices.begin(), indices.end(), rng);
+            
+            train_indices.assign(indices.begin(), indices.begin() + k);
+            test_indices.assign(indices.begin() + k, indices.end());
+        }
+
+        // 2. Creation: Create copies
         DataInstance* train = this->clone();
         DataInstance* test = this->clone();
-
-        // 3. Partition: Split indices into two sets
-        std::vector<int> train_indices(indices.begin(), indices.begin() + k);
-        std::vector<int> test_indices(indices.begin() + k, indices.end());
-
+        
         //print training scenarios IDs
         std::cout << "Training scenarios IDs: ";
         for (size_t i = 0; i < train_indices.size(); ++i) {

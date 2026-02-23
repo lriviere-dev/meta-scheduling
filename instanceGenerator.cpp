@@ -57,7 +57,7 @@ private:
 public:
     Generator(unsigned int seed) : rng(seed) {}
 
-    void generate_and_save(int N, int S, double prec_density, double var, double mode_dist_factor, const std::string& path) {
+    void generate_and_save(int N, int S, double prec_density, int cluster_number, double intra_cluster_var, double inter_cluster_var, const std::string& path) {
         // 1. Durations (P)
         std::uniform_int_distribution<int> p_dist(1, 49);
         std::vector<int> durations(N);
@@ -69,35 +69,38 @@ public:
         int half_sum = static_cast<int>(sum_p / 2);
 
         // 2. Hierarchical Base Release Date Generation
-        std::uniform_int_distribution<int> r_dist(0, half_sum);
-        std::vector<int> global_base_R(N);
-        std::vector<int> mode_A_centers(N);
-        std::vector<int> mode_B_centers(N);
+        std::uniform_int_distribution<int> r_dist(0, half_sum);//possible base release dates.
+        std::vector<std::vector<int>> cluster_scenarios(cluster_number, std::vector<int>(N));
+        std::vector<int> global_base_R(N);//used when inter_cluster_var is not maximal (value 1)
+
 
         for (int i = 0; i < N; ++i) {
             global_base_R[i] = r_dist(rng);
-            
-            // mode_dist_factor determines how far the two modes are from each other (offset is a fixed value based on the param and half sum)
-            int offset = static_cast<int>(half_sum* mode_dist_factor);
-            mode_A_centers[i] = global_base_R[i];
-            mode_B_centers[i] = global_base_R[i] + offset;
         }
 
-        // 2bis. Scenario Sampling (Equiprobable between modes)
-        std::vector<std::vector<int>> scenarios(S, std::vector<int>(N));
-        std::bernoulli_distribution coin_flip(0.5); // 50/50 chance for each mode
+        for (int s = 0; s < cluster_number; ++s) {
+            for (int i = 0; i < N; ++i) {
+                cluster_scenarios[s][i] = inter_cluster_var == 1 ? r_dist(rng) : global_base_R[i] + static_cast<int>(inter_cluster_var * r_dist(rng));
+                }
+        }
 
-        for (int j = 0; j < N; ++j) {
-            // Local variance for the bell curves around the centers
-            double sigma_A = std::max(1.0, var * mode_A_centers[j]);
-            double sigma_B = std::max(1.0, var * mode_B_centers[j]);
-            
-            std::normal_distribution<double> dist_A(mode_A_centers[j], sigma_A);
-            std::normal_distribution<double> dist_B(mode_B_centers[j], sigma_B);
-            
-            for (int i = 0; i < S; ++i) {
-                double val = coin_flip(rng) ? dist_A(rng) : dist_B(rng);
-                scenarios[i][j] = std::max(0, static_cast<int>(std::round(val)));
+        // 2bis. Scenario Sampling 
+        std::vector<std::vector<int>> scenarios(S, std::vector<int>(N));
+        std::uniform_int_distribution<int> sample_pick(0, cluster_number-1);
+        std::normal_distribution<double> intra_var_gen(0, half_sum * intra_cluster_var);
+
+        //Setting the first listed scenarios as the clusters center themselves (so the can be retrieved if needed)
+        for (int s = 0; s < std::min(S, cluster_number); ++s) {
+            for (int j = 0; j < N; ++j) {
+                scenarios[s][j] = cluster_scenarios[s][j];
+            }
+        }
+
+        //fill rest with random scenarios around the cluster centers
+        for (int s = cluster_number; s < S; ++s) {
+            int cluster = sample_pick(rng);//choose which cluster this scenario is from
+            for (int j = 0; j < N; ++j) { //draw each task around cluster scenario values with intra_cluster variance (this creates the "modes" around the cluster centers)
+                scenarios[s][j] = std::max(0, cluster_scenarios[cluster][j] + static_cast<int>(intra_var_gen(rng)));
             }
         }
 
@@ -157,37 +160,43 @@ public:
 int main() {
     int seed = 42;
     Generator gen(seed);
-    std::string bench_name = "bimodal2_r";
+    std::string bench_name = "given_clusters"; //name of the folder where generated instances will be stored (inside instances/)
 
     std::vector<int> ns = {100};
     std::vector<double> prec_densities = {0.01};
-    std::vector<double> variances = { 0.1};
-    std::vector<double> mode_dist_factors = {0, 0.3, 0.6, 1.0};
-    int nb_base_variants = 5;
+    std::vector<double> inter_var = {1};
+    std::vector<double> intra_var = {0.005, 0.01, 0.03, 0.05 };
+    std::vector<int> number_cluster = {5, 25};
+    int nb_base_variants = 3;
 
     std::cout << "Generating instances..." << std::endl;
+    int count = 0;
 
     for (int N : ns) {
         for (double density : prec_densities) {
-            for (double var : variances) {
-                for (double mode_dist_factor : mode_dist_factors) {
-                    for (int i = 0; i < nb_base_variants; ++i) {
-                        // Generate Test Instance (1000 scenarios)
-                        std::string test_file = "instances/" + bench_name + "/" + 
-                                                bench_name + "_N" + std::to_string(N) + 
-                                                "_prec" + format_num(density) + 
-                                                "_I" + std::to_string(i) + 
-                                            "_S1000_var" + format_num(var) + 
-                                            "_mode" + format_num(mode_dist_factor) + 
-                                            ".data";
-                    gen.generate_and_save(N, 1000, density, var, mode_dist_factor, test_file);
-                    std::cout << "."; std::cout.flush();
+            for (double inter_var : inter_var) {
+                for (double intra_var : intra_var) {
+                    for (int cluster : number_cluster) {    
+                        for (int i = 0; i < nb_base_variants; ++i) {
+                                // Generate Test Instance (1000 scenarios)
+                                std::string test_file = "instances/" + bench_name + "/" + 
+                                                        bench_name + "_N" + std::to_string(N) + 
+                                                        "_prec" + format_num(density) + 
+                                                        "_I" + std::to_string(i) + 
+                                                    "_S1000_inter" + format_num(inter_var) + 
+                                                    "_intra" + format_num(intra_var) + 
+                                                    "_cluster" + std::to_string(cluster) + 
+                                                    ".data";
+                            gen.generate_and_save(N, 1000, density, cluster, intra_var, inter_var, test_file);
+                            std::cout << "."; std::cout.flush();
+                            count++;
+                        }
                     }
                 }
             }
         }
     }
 
-    std::cout << "\nGeneration complete." << std::endl;
+    std::cout << "\nGeneration complete : " << count << " instances generated." << std::endl;
     return 0;
 }

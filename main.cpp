@@ -135,9 +135,9 @@ std::vector<SequenceMetaSolution> diversify_step_multi (std::vector<SequenceMeta
 
 int main(int argc, char* argv[]) {
     // Default parameter values
-    // std::string file_name = "instances/test.data";  // Default file for tests
-    std::string file_name = "instances/sample_test_folder/rcpsp_test_N7_S1000_gamma3.data";  // Default file for tests with RCPSP
-    // std::string file_name = "instances/sample_test_folder/j1201_1_N122_S1000_gamma3.data";  // Default file for tests with RCPSP
+    std::string file_name = "instances/test.data";  // Default file for tests
+    // std::string file_name = "instances/sample_test_folder/rcpsp_test_N7_S1000_gamma3.data";  // Default file for tests with RCPSP
+    // std::string file_name = "instances/sample_test_folder/j1201_1_N122_S1000_gamma3.data";  // Big file for tests with RCPSP
     int jseq_time = 10;                     // Time allocated to jseq solver (seconds)
     int nb_training_scenarios = 1;  //this is the number of training scenarios : S
     int sampling_iterations = 1; //number of times to repeat the sampling / solve / evaluation process (HIgher number is more significant)
@@ -187,8 +187,8 @@ int main(int argc, char* argv[]) {
 
     std::cout << std:: endl << "==== Instance Summary ===" << std::endl;
 
-    //SingleMachineInstance instance(file_name);
-    RCPSPInstance instance(file_name);
+    SingleMachineInstance instance(file_name);
+    // RCPSPInstance instance(file_name);
     if (instance.type == InstanceType::SINGLE_MACHINE) {
         std::cout << "Instance type : Single Machine" << std::endl;
     } 
@@ -203,14 +203,14 @@ int main(int argc, char* argv[]) {
     std::cout << std:: endl << "==== Experiment Start ===" << std::endl;
 
     //ideal policy and solvers
-    // IdealPolicy ideal; //ideal policy for bounds
-    IdealRCPSPPolicy ideal; //ideal policy (RCPSP)
+    IdealPolicy ideal; //ideal policy for bounds
+    // IdealRCPSPPolicy ideal; //ideal policy (RCPSP)
     IdealSolver ideal_solver(&ideal); 
 
     // policy 
-    //FIFOPolicy used_policy; //fifo policy
+    FIFOPolicy used_policy; //fifo policy
     // SPTPolicy used_policy; //spt policy
-    RCPSPPolicy used_policy; //rcpsp policy
+    // RCPSPPolicy used_policy; //rcpsp policy
     std::cout << "Policy : " << used_policy.name << std::endl;
 
     //solvers
@@ -229,7 +229,7 @@ int main(int argc, char* argv[]) {
         std::cout << std:: endl << "\tIteration " << i << std::endl;
         //Splitting instance randomly into training and testing.
         DataInstance *trainInstance, *testInstance;
-        std::tie(trainInstance, testInstance) = instance.SampleSplitScenarios(nb_training_scenarios, rng);
+        std::tie(trainInstance, testInstance) = instance.SampleSplitScenarios(nb_training_scenarios, rng, true); //use_clusters = true means that we first take the cluster centers as training scenarios, then fill the rest of the training set with random scenarios, and the rest is test. use_clusters = false means pure random sampling for train and test.
 
         // trainInstance->print(); //for debug mostly (large print)
 

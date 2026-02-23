@@ -217,6 +217,7 @@ namespace std {
         }
     };
 }
+
 // The simple sequence (JSEQ)
 class SequenceMetaSolution:  public MetaSolution {
 public:
@@ -286,6 +287,46 @@ private:
     Sequence taskSequence;
 }; 
 
+/*
+//partial Orders
+class PartialOrderMetaSolution : public MetaSolution {
+public:
+    PartialOrderMetaSolution(int N) {// Default constructor (empty partial order full of zeros)
+        partialOrder = std::vector<uint8_t>(N * N, 0); 
+    } 
+    PartialOrderMetaSolution(int N,const std::vector<uint8_t>& partialOrder) : partialOrder(partialOrder) {} 
+    
+    void update(){
+        transitive_closure(partialOrder);
+    }
+
+    void print() const override {
+        std::cout << "Partial Order (precedence matrix):\n";
+        for (int i = 0; i < N; ++i) {
+            for (int j = 0; j < N; ++j) {
+                if (partialOrder[i * N + j]) {
+                    std::cout << i << " -> " << j << "\n";
+                }
+            }
+        }
+    }
+
+private:
+    std::vector<uint8_t> partialOrder; // A representation of the partial order (flat array of 0/1))
+    void transitive_closure(std::vector<uint8_t>& prec) {
+        // Floyd-Warshall style transitive closure computation
+        for (int k = 0; k < N; ++k) {
+            for (int i = 0; i < N; ++i) {
+                for (int j = 0; j < N; ++j) {
+                    if (prec[i * N + k] && prec[k * N + j]) {
+                        prec[i * N + j] = 1;
+                    }
+                }
+            }
+        }
+    }
+};
+*/
 
 // You can define more derived classes here...
 
