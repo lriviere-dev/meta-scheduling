@@ -299,11 +299,13 @@ int main(int argc, char* argv[]) {
 
         //for following steps, keep only front of best_of sjseq algo, up to a limit of sequences (There is already a cap of |S| sequences but We would like something smaller)
         // we also make sure to keep the jseq computed solution, in order to guarantee we will have the computed EW solution in the GSEQ set
-        int max_diversity = 25; //arbitrary based on observed execution time
+        int max_diversity = 100; //arbitrary based on observed execution time (25 for SPT is more reasonable). Make sure to add the truncated solutions back as GSEQ after EW. Guarantees GSEQ solution dominance in training
         std::vector<SequenceMetaSolution> diversifiedSeqSample = (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(clean_sjseq_solution))->get_meta_solutions_typed();
+        std::vector<SequenceMetaSolution> truncatedBacklog = {}; // in case we need to add back some of the truncated solutions after EW
         if (diversifiedSeqSample.size()>max_diversity)
         {
-            diversifiedSeqSample.erase(diversifiedSeqSample.begin() + max_diversity -1, diversifiedSeqSample.end()); //we just truncate the output to limit max diversity
+            truncatedBacklog = std::vector<SequenceMetaSolution>(diversifiedSeqSample.begin() + max_diversity -1, diversifiedSeqSample.end());//saving truncated part
+            diversifiedSeqSample.erase(diversifiedSeqSample.begin() + max_diversity -1, diversifiedSeqSample.end()); //truncating 
             diversifiedSeqSample.push_back(*dynamic_cast<SequenceMetaSolution*>(jseq_solution)); //adding the jseq solution (inneficient if already in, but cache should make it fast)
             std::cout << "truncated front sample jseq solutions from :" <<diversifiedSeqSample.size()<<std::endl; 
 
@@ -325,7 +327,18 @@ int main(int argc, char* argv[]) {
         AllSolutionsGroup.assign(metaSet.begin(), metaSet.end());//inserting all EW+ solutions
         AllSolutionsGroup.push_back(*dynamic_cast<GroupMetaSolution*>(pure_policy_solution)); //inserting the fifo fully permutable solution to make sure (training) score is at least as good (very likely to be removed by GSEQ)
         AllSolutionsGroup[AllSolutionsGroup.size()-1].reset_evaluation();
-
+        
+        //Add back the "Backlog" solutions (those we skipped to save time)
+        int added_back = 0;
+        for (auto& seqSol : truncatedBacklog) {
+            GroupMetaSolution* gseqPtr = seqSol.to_gseq(); 
+            if (gseqPtr != nullptr) {
+                AllSolutionsGroup.push_back(*gseqPtr); // Copy the object into the vector
+                delete gseqPtr;                        // Clean up the heap allocation
+                added_back++;
+            }
+        }
+        if (added_back > 0) {std::cout << "Added back " << added_back << " truncated solutions to GSEQ set after EW." << std::endl;}
         std::cout << "number of diversifiedsol gseq :" <<AllSolutionsGroup.size()<<std::endl;
 
         //searching All GSEQ solutions for the best one
@@ -362,7 +375,22 @@ int main(int argc, char* argv[]) {
         std::cout<<"SGSEQ Front testing 90q : " << clean_sgseq_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
         std::cout<<"SGSEQ Front testing scenario scores : " << vec_to_string(clean_sgseq_solution->get_scores(used_policy,*testInstance)) << std::endl; 
 
+        //Calculating how much better the solution could be (doing best of with testing scenarios) (Debug but not too long so leaving it in for comparison)
+        bestof_gseq.set_initial_solution(listgroupmetasol);
+        MetaSolution * sgseq_test_solution;
+        {
+        Timer timer("BO SGSEQTEST timer");
+        sgseq_test_solution = bestof_gseq.solve(*testInstance); 
+        }
+        //reducing to front
+        std::cout << "SGSEQTEST size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_test_solution))->get_meta_solutions_size()<<std::endl; 
+        std::cout<<"SGSEQTEST training score : " << used_policy.evaluate_meta(*sgseq_test_solution,*trainInstance) << std::endl; 
+        std::cout<<"SGSEQTEST testing score : " << used_policy.evaluate_meta(*sgseq_test_solution,*testInstance) << std::endl; 
+        std::cout<<"SGSEQTEST scenario scores : " << vec_to_string(sgseq_test_solution->get_scores(used_policy,*testInstance)) << std::endl; 
 
+
+        
+        
 
         std::cout << std:: endl << "==== Solutions dump ===" << std::endl;
         //debug solution dumps
