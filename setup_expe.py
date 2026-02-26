@@ -39,13 +39,20 @@ with open(f'{run_name}.key', 'w') as keyfile:
         param_values_lists = [param[0] for param in parameters.values()]  # Get the possible values lists
         param_combinations = product(*param_values_lists)
     elif experiment_mode == 'star':
-        # 'star' mode: Vary one parameter at a time while keeping others at default values
-        param_combinations = []
-        for i, param_key in enumerate(param_keys):
-            # Set the other parameters to their default values
-            param_values = {key: (parameters[key][0] if key == param_key else [parameters[key][1]]) for key in param_keys}
-            param_combinations.extend(product(*param_values.values()))
+            # 1. Start with the baseline (all default values)
+            default_tuple = tuple(parameters[key][1] for key in param_keys)
+            param_combinations = [default_tuple]
 
+            for i, param_key in enumerate(param_keys):
+                values, default = parameters[param_key]
+                for val in values:
+                    # 2. Only add if it's NOT the default value to avoid duplicates
+                    if val != default:
+                        # Create a list based on defaults, then swap the one active parameter
+                        combo = list(default_tuple)
+                        combo[i] = val
+                        param_combinations.append(tuple(combo))
+                        
     # Write the job commands to the keyfile
     for param_values in param_combinations:
         param_dict = dict(zip(param_keys, param_values))
