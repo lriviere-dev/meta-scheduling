@@ -219,9 +219,12 @@ int main(int argc, char* argv[]) {
     EssweinAlgorithm EWSolver(&used_policy);
     BestOfAlgorithm<SequenceMetaSolution> bestof_jseq(&used_policy);
     BestOfAlgorithm<GroupMetaSolution> bestof_gseq(&used_policy);
+    BestKGreedyAlgorithm2<SequenceMetaSolution> bestk_greedy_seq(&used_policy);
+    BestKGreedyAlgorithm2<GroupMetaSolution> bestk_greedy_group(&used_policy);
 
     //Output solutions declaration
     MetaSolution* ideal_train_solution, *ideal_test_solution, *pure_policy_solution, *jseq_solution, *gseq_solution, *sjseq_solution, *sgseq_solution, *clean_sjseq_solution, *clean_sgseq_solution;
+    MetaSolution* sjseq_greedy_solution, *sgseq_greedy_solution;
     std::unordered_set<GroupMetaSolution> metaSet; //the map allows to not repeat identical EW steps between te different JSEQ. (results kept even for each scenario sampling)
 
     
@@ -296,6 +299,22 @@ int main(int argc, char* argv[]) {
         std::cout<<"SJSEQ Front testing score : " << used_policy.evaluate_meta(*clean_sjseq_solution,*testInstance) << std::endl; 
         std::cout<<"SJSEQ Front testing 90q : " << clean_sjseq_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
         std::cout<<"SJSEQ Front testing scenario scores : " << vec_to_string(clean_sjseq_solution->get_scores(used_policy,*testInstance)) << std::endl; 
+
+        //Testing SJSEQ greedy evaluation
+        bestk_greedy_seq.set_initial_solution(*clean_sjseq_solution);
+        for (int k : {trainInstance->getS()/2, trainInstance->getS()/4,  trainInstance->getS()/8, 10, 8, 6, 4, 3, 2}){
+            std::cout << std:: endl << "\tSJSEQ Greedy evaluation with k = " << k << std::endl;
+            bestk_greedy_seq.set_k(k);
+            sjseq_greedy_solution = bestk_greedy_seq.solve(*trainInstance);
+            if (k != trainInstance->getS()/2) {delete bestk_greedy_seq.initial_solution;} //cleaning up the solution created for greedy (not first one cause we'll use it later
+            bestk_greedy_seq.set_initial_solution(*sjseq_greedy_solution);
+            std::cout << "SJSEQ" << k << " greedy size :" << (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_greedy_solution))->get_meta_solutions_size()<<std::endl; 
+            std::cout<<"SJSEQ" << k << " greedy training score : " << used_policy.evaluate_meta(*sjseq_greedy_solution,*trainInstance) << std::endl;                 
+            std::cout<<"SJSEQ" << k << " greedy testing score : " << used_policy.evaluate_meta(*sjseq_greedy_solution,*testInstance) << std::endl; 
+            std::cout<<"SJSEQ" << k << " greedy testing 90q : " << sjseq_greedy_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
+            std::cout<<"SJSEQ" << k << " greedy testing scenario scores : " << vec_to_string(sjseq_greedy_solution->get_scores(used_policy,*testInstance)) << std::endl; 
+        }   
+
 
         //for following steps, keep only front of best_of sjseq algo, up to a limit of sequences (There is already a cap of |S| sequences but We would like something smaller)
         // we also make sure to keep the jseq computed solution, in order to guarantee we will have the computed EW solution in the GSEQ set
@@ -375,18 +394,33 @@ int main(int argc, char* argv[]) {
         std::cout<<"SGSEQ Front testing 90q : " << clean_sgseq_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
         std::cout<<"SGSEQ Front testing scenario scores : " << vec_to_string(clean_sgseq_solution->get_scores(used_policy,*testInstance)) << std::endl; 
 
-        //Calculating how much better the solution could be (doing best of with testing scenarios) (Debug but not too long so leaving it in for comparison)
-        bestof_gseq.set_initial_solution(listgroupmetasol);
-        MetaSolution * sgseq_test_solution;
-        {
-        Timer timer("BO SGSEQTEST timer");
-        sgseq_test_solution = bestof_gseq.solve(*testInstance); 
-        }
-        //reducing to front
-        std::cout << "SGSEQTEST size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_test_solution))->get_meta_solutions_size()<<std::endl; 
-        std::cout<<"SGSEQTEST training score : " << used_policy.evaluate_meta(*sgseq_test_solution,*trainInstance) << std::endl; 
-        std::cout<<"SGSEQTEST testing score : " << used_policy.evaluate_meta(*sgseq_test_solution,*testInstance) << std::endl; 
-        std::cout<<"SGSEQTEST scenario scores : " << vec_to_string(sgseq_test_solution->get_scores(used_policy,*testInstance)) << std::endl; 
+        //Testing SGSEQ greedy evaluation
+        bestk_greedy_group.set_initial_solution(*clean_sgseq_solution);
+        for (int k : {trainInstance->getS()/2, trainInstance->getS()/4,  trainInstance->getS()/8, 10, 8, 6, 4, 3, 2}){
+            std::cout << std:: endl << "\tSGSEQ Greedy evaluation with k = " << k << std::endl;
+            bestk_greedy_group.set_k(k);
+            sgseq_greedy_solution = bestk_greedy_group.solve(*trainInstance);
+            if (k != trainInstance->getS()/2) {delete bestk_greedy_group.initial_solution;} //cleaning up the solution created for greedy (not first one cause we'll use it later
+            bestk_greedy_group.set_initial_solution(*sgseq_greedy_solution);
+            std::cout << "SGSEQ"<< k << " greedy size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_greedy_solution))->get_meta_solutions_size()<<std::endl; 
+            std::cout<<"SGSEQ"<< k << " greedy training score : " << used_policy.evaluate_meta(*sgseq_greedy_solution,*trainInstance) << std::endl;                 
+            std::cout<<"SGSEQ"<< k << " greedy testing score : " << used_policy.evaluate_meta(*sgseq_greedy_solution,*testInstance) << std::endl; 
+            std::cout<<"SGSEQ"<< k << " greedy testing 90q : " << sgseq_greedy_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
+            std::cout<<"SGSEQ"<< k << " greedy testing scenario scores : " << vec_to_string(sgseq_greedy_solution->get_scores(used_policy,*testInstance)) << std::endl; 
+        }   
+
+        // //Calculating how much better the solution could be (doing best of with testing scenarios) (Debug but not too long so leaving it in for comparison)
+        // bestof_gseq.set_initial_solution(listgroupmetasol);
+        // MetaSolution * sgseq_test_solution;
+        // {
+        // Timer timer("BO SGSEQTEST timer");
+        // sgseq_test_solution = bestof_gseq.solve(*testInstance); 
+        // }
+        // //reducing to front
+        // std::cout << "SGSEQTEST size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_test_solution))->get_meta_solutions_size()<<std::endl; 
+        // std::cout<<"SGSEQTEST training score : " << used_policy.evaluate_meta(*sgseq_test_solution,*trainInstance) << std::endl; 
+        // std::cout<<"SGSEQTEST testing score : " << used_policy.evaluate_meta(*sgseq_test_solution,*testInstance) << std::endl; 
+        // std::cout<<"SGSEQTEST scenario scores : " << vec_to_string(sgseq_test_solution->get_scores(used_policy,*testInstance)) << std::endl; 
 
 
         

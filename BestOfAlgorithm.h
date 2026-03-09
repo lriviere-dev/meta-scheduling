@@ -113,4 +113,148 @@ public:
 
 };
 
+template <typename T>
+class BestKGreedyAlgorithm : public SecondStageAlgorithm {
+
+public:
+
+    BestKGreedyAlgorithm<T>(Policy* policy) {
+        this->policy = policy; // Use the policy provided during initialization
+    }
+
+    void set_k(int k) {
+        if (k <= 0) {
+            throw std::invalid_argument("k must be a positive integer.");
+        }
+
+        this->k = k;
+    }
+
+    /**
+     * Greedy forward selection: 
+     * Starts with an empty set and adds the metasolution that provides the 
+     * greatest improvement to the robust bottleneck score until size k is reached.
+     */
+    MetaSolution* solve(const DataInstance& instance) {
+        if (!policy) throw std::runtime_error("Policy not set.");
+        if (!initial_solution) throw std::runtime_error("Initial solution must be set before running the algorithm.");
+        ListMetaSolution<T>* listMetaSolution = dynamic_cast<ListMetaSolution<T>*>(initial_solution);
+        if (!listMetaSolution) throw std::runtime_error("Initial_solution must be of type ListMetaSolution<T>.");
+
+        std::vector<MetaSolution*> candidates = listMetaSolution->get_meta_solutions();
+        std::vector<bool> used(candidates.size(), false); // Track which candidates have been added to the solution
+        
+        // The accumulator: starts empty
+        // We initialize it as an empty list of metasolutions
+        ListMetaSolution<T>* accu = new ListMetaSolution<T>(std::vector<T>{});
+
+        for (int i = 0; i < k && i < (int)candidates.size(); ++i) {
+            int bestCandidateIdx = -1;
+            int bestScore = std::numeric_limits<int>::max();
+
+            // Search for the best metasolution to add to the current accu
+            for (size_t c = 0; c < candidates.size(); ++c) {
+                if (used[c]) continue; //skip already added solutions.
+
+                // Create a temporary version to evaluate the addition
+                ListMetaSolution<T> testSol = *accu; // If too long, optimize by not reevaluating this without a full copy 
+                testSol.add_meta_solution(*static_cast<T*>(candidates[c]));
+                int currentScore = policy->evaluate_meta(testSol, instance);
+
+                if (currentScore < bestScore) {
+                    bestScore = currentScore;
+                    bestCandidateIdx = c;
+                }
+            }
+
+            // Add the best one found in this iteration to our accumulator
+            accu->add_meta_solution(*static_cast<T*>(candidates[bestCandidateIdx]));
+            used[bestCandidateIdx] = true;
+        }
+
+        return accu;
+    }
+    
+private:
+    int k;
+
+};
+
+template <typename T>
+class BestKGreedyAlgorithm2 : public SecondStageAlgorithm {
+
+public:
+
+    BestKGreedyAlgorithm2<T>(Policy* policy) {
+        this->policy = policy; // Use the policy provided during initialization
+    }
+
+    void set_k(int k) {
+        if (k <= 0) {
+            throw std::invalid_argument("k must be a positive integer.");
+        }
+        this->k = k;
+    }
+
+    /**
+     * Greedy but starts from the front of bestof selection: 
+     * REMOVES the least decreasing solution from the bestof solution iteratively until size k is reached. 
+     * greatest improvement to the robust bottleneck score until size k is reached.
+     */
+MetaSolution* solve(const DataInstance& instance) override {
+        if (!policy) throw std::runtime_error("Policy not set.");
+        if (!initial_solution) throw std::runtime_error("Initial solution must be set.");
+        ListMetaSolution<T>* listMetaSolution = dynamic_cast<ListMetaSolution<T>*>(initial_solution);
+        if (!listMetaSolution) throw std::runtime_error("Initial_solution must be of type ListMetaSolution<T>.");
+
+        // We start with the full set of metasolutions
+        ListMetaSolution<T>* currentSol = new ListMetaSolution<T>(*listMetaSolution);
+
+        // Continue removing until we reach k
+        while (currentSol->get_meta_solutions_size() > (size_t)k ) {
+            int bestCandidateToRemove = -1;
+            int bestScoreFound = std::numeric_limits<int>::max();
+
+            // We iterate through current indices to find the "least useful" metasolution
+            size_t currentSize = currentSol->get_meta_solutions_size();
+            for (size_t i = 0; i < currentSize; ++i) {
+                // Create a temporary copy to evaluate the state after removal
+                ListMetaSolution<T> testSol = *currentSol;
+                int currentScore; //score of that solution
+
+                // Remove the i-th metasolution
+                // Note: Ensure your ListMetaSolution has a method to remove by index
+                testSol.remove_meta_solution_index(i); 
+                testSol.reset_evaluation(); // Ensure we reset evaluation to get correct score after modification (could be optimized)
+                // int currentScore = policy->evaluate_meta(testSol, instance);
+                try {
+                    currentScore = policy->evaluate_meta(testSol, instance, bestScoreFound); //eval, but get out if score is bad
+                } catch (const EvaluationBoundExceeded& e) {
+                    continue; //skip to next candidate
+                }
+
+
+                // We want to keep the subset that has the MINIMUM bottleneck score
+                if (currentScore < bestScoreFound) {
+                    bestScoreFound = currentScore;
+                    bestCandidateToRemove = i;
+                }
+            }
+
+            // Perform the best removal on our actual working solution
+            if (bestCandidateToRemove != -1) {
+                currentSol->remove_meta_solution_index(bestCandidateToRemove);
+            } else {
+                break; // but should never happen 
+            }
+        }
+
+        return currentSol;
+    }
+
+private:
+    int k;
+
+};
+
 #endif //BOALGO_H

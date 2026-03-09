@@ -127,6 +127,11 @@ public:
     }
 
 
+    void add_meta_solution(const T& metaSolution) {
+        metaSolutions.push_back(metaSolution);
+        reset_evaluation(); 
+    }
+
     const int get_meta_solutions_size() const {
         return metaSolutions.size();
     }
