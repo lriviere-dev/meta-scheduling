@@ -43,6 +43,15 @@ public:
     ListMetaSolution(const ListMetaSolution<T>& other)
         : metaSolutions(other.metaSolutions) {}
 
+    // Copy constructor with cast from metasolution to listmetasolution
+    ListMetaSolution(const MetaSolution& other){
+        if (const ListMetaSolution<T>* casted = dynamic_cast<const ListMetaSolution<T>*>(&other)) {
+            metaSolutions = casted->metaSolutions;
+        } else {
+            throw std::runtime_error("Provided MetaSolution cannot be cast to ListMetaSolution<T>.");
+        }
+    }
+
     // Method to add a meta-solution to the list (deprecated, needs to update policy evaluation)
     /*void add_meta_solution(const T& metaSolution) {
         metaSolutions.push_back(metaSolution);

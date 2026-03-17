@@ -211,7 +211,7 @@ MetaSolution* solve(const DataInstance& instance) override {
         ListMetaSolution<T>* currentSol = new ListMetaSolution<T>(*listMetaSolution);
 
         // Continue removing until we reach k
-        while (currentSol->get_meta_solutions_size() > (size_t)k ) {
+        while (currentSol->get_meta_solutions_size() > k ) {
             int bestCandidateToRemove = -1;
             int bestScoreFound = std::numeric_limits<int>::max();
 
@@ -256,5 +256,9 @@ private:
     int k;
 
 };
+
+
+
+
 
 #endif //BOALGO_H

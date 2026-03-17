@@ -134,15 +134,15 @@ virtual void print_precedences() const {
         DataInstance* train = this->clone();
         DataInstance* test = this->clone();
         
-        //print training scenarios IDs
-        std::cout << "Training scenarios IDs: ";
-        for (size_t i = 0; i < train_indices.size(); ++i) {
-            std::cout << train_indices[i];
-            if (i != train_indices.size() - 1) {
-                std::cout << ", ";
-            }
-        }
-        std::cout << std::endl;
+        // //print training scenarios IDs (could put a debug arg for it)
+        // std::cout << "Training scenarios IDs: ";
+        // for (size_t i = 0; i < train_indices.size(); ++i) {
+        //     std::cout << train_indices[i];
+        //     if (i != train_indices.size() - 1) {
+        //         std::cout << ", ";
+        //     }
+        // }
+        // std::cout << std::endl;
 
         // 4. Delegation: Let the subclass handle the actual data plucking
         train->extractScenarios(this, train_indices);
