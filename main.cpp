@@ -121,7 +121,7 @@ std::vector<SequenceMetaSolution> diversify_step_multi (std::vector<SequenceMeta
     //add jseq research solution (don't do it because I don't want to run a solver a long time again, but we could keep the sequences from earlier)
     // using diversify_step_jseq
 
-    //add ideal solutions (the "best" sequence found in each scenario without front considerations (as per limited solver time))
+    //add ideal solutions (the "best" sequence found in each scenario without front considerations (as per limited solver time)) //This is arguably cheating, as you get an hour to find these sequences.
     output_solutions = diversify_step_ideal(output_solutions, instance, ideal_sol);
 
     //extra diversify by integrating neighbors of previously added "good quality" solutions.
@@ -315,47 +315,47 @@ int main(int argc, char* argv[]) {
         //     std::cout<<"SJSEQ" << k << " greedy testing scenario scores : " << vec_to_string(sjseq_greedy_solution->get_scores(used_policy,*testInstance)) << std::endl; 
         // }   
 
-        //new greedy procedure : 
-        int subsplit_number = 5;
-        int best_general_score = INT_MAX; 
-        int best_k = (int)trainInstance->getS();
-        for (int i = 0; i< subsplit_number; i++){
-            //split train instance 50/50 randomly
-            DataInstance *greedyTrainInstance, *greedyTestInstance;
-            std::tie(greedyTrainInstance, greedyTestInstance) = trainInstance->SampleSplitScenarios(trainInstance->getS()/2, rng, true); //use_clusters = Is it necessary?
-            //2. For each subspllit, find best k for greedy procedure.
-            bestk_greedy_seq.set_initial_solution(*clean_sjseq_solution);//start with bestof solution front
-            int subsplit_best_score = used_policy.evaluate_meta(*clean_sjseq_solution, *greedyTestInstance);
-            best_sol = new ListMetaSolution<SequenceMetaSolution>(*clean_sjseq_solution); //copy init solution
-            for (int k = (int)(trainInstance->getS()/2); k > 1; k--) {//iterate on smaller and smaller k
-                bestk_greedy_seq.set_k(k); 
-                sjseq_greedy_solution = bestk_greedy_seq.solve(*greedyTrainInstance); //find best training subset of solution
-                int current_score = used_policy.evaluate_meta(*sjseq_greedy_solution, *greedyTestInstance); //evaluate on test split 
-                if (current_score <= subsplit_best_score) { //prefering smaller k 
-                    subsplit_best_score = current_score;
-                    delete best_sol; //clean up previous solution
-                    best_sol = new ListMetaSolution<SequenceMetaSolution>(*sjseq_greedy_solution); //copy current solution
-                }
-                if (k != (int)(trainInstance->getS()/2)) {delete bestk_greedy_seq.initial_solution;} //cleaning up the solution created for greedy (not first one cause we'll use it later for sure)
-                bestk_greedy_seq.set_initial_solution(*sjseq_greedy_solution);//next step goes faster to start from current solution.
-            }
-            //4. If it's better on trainInstance than previous best, update, if equal score and smaller, update
-            int current_general_score = used_policy.evaluate_meta(*best_sol, *trainInstance);
-            int current_k = static_cast<ListMetaSolution<SequenceMetaSolution>*>(best_sol)->get_meta_solutions_size();
-            if ((current_general_score < best_general_score ) || ((current_general_score == best_general_score ) && current_k < best_k)) { //we want to prefer smaller solutions in case of equal score 
-                best_general_score = current_general_score;
-                best_k =  current_k;
-                delete sjseq_simple_solution; //clean up previous solution
-                sjseq_simple_solution = new ListMetaSolution<SequenceMetaSolution>(*best_sol); //copy current solution
-            }
-            delete greedyTrainInstance; //clean up subsplit instances
-            delete greedyTestInstance;
-        }
-        std::cout << "SJSEQ simple size :" << (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_simple_solution))->get_meta_solutions_size()<<std::endl; 
-        std::cout<< "SJSEQ simple training score : " << used_policy.evaluate_meta(*sjseq_simple_solution,*trainInstance) << std::endl;                 
-        std::cout<< "SJSEQ simple testing score : " << used_policy.evaluate_meta(*sjseq_simple_solution,*testInstance) << std::endl; 
-        std::cout<< "SJSEQ simple testing 90q : " << sjseq_simple_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
-        std::cout<< "SJSEQ simple testing scenario scores : " << vec_to_string(sjseq_simple_solution->get_scores(used_policy,*testInstance)) << std::endl; 
+        // //new greedy procedure : 
+        // int subsplit_number = 5;
+        // int best_general_score = INT_MAX; 
+        // int best_k = (int)trainInstance->getS();
+        // for (int i = 0; i< subsplit_number; i++){
+        //     //split train instance 50/50 randomly
+        //     DataInstance *greedyTrainInstance, *greedyTestInstance;
+        //     std::tie(greedyTrainInstance, greedyTestInstance) = trainInstance->SampleSplitScenarios(trainInstance->getS()/2, rng, true); //use_clusters = Is it necessary?
+        //     //2. For each subspllit, find best k for greedy procedure.
+        //     bestk_greedy_seq.set_initial_solution(*clean_sjseq_solution);//start with bestof solution front
+        //     int subsplit_best_score = used_policy.evaluate_meta(*clean_sjseq_solution, *greedyTestInstance);
+        //     best_sol = new ListMetaSolution<SequenceMetaSolution>(*clean_sjseq_solution); //copy init solution
+        //     for (int k = (int)(trainInstance->getS()/2); k > 1; k--) {//iterate on smaller and smaller k
+        //         bestk_greedy_seq.set_k(k); 
+        //         sjseq_greedy_solution = bestk_greedy_seq.solve(*greedyTrainInstance); //find best training subset of solution
+        //         int current_score = used_policy.evaluate_meta(*sjseq_greedy_solution, *greedyTestInstance); //evaluate on test split 
+        //         if (current_score <= subsplit_best_score) { //prefering smaller k 
+        //             subsplit_best_score = current_score;
+        //             delete best_sol; //clean up previous solution
+        //             best_sol = new ListMetaSolution<SequenceMetaSolution>(*sjseq_greedy_solution); //copy current solution
+        //         }
+        //         if (k != (int)(trainInstance->getS()/2)) {delete bestk_greedy_seq.initial_solution;} //cleaning up the solution created for greedy (not first one cause we'll use it later for sure)
+        //         bestk_greedy_seq.set_initial_solution(*sjseq_greedy_solution);//next step goes faster to start from current solution.
+        //     }
+        //     //4. If it's better on trainInstance than previous best, update, if equal score and smaller, update
+        //     int current_general_score = used_policy.evaluate_meta(*best_sol, *trainInstance);
+        //     int current_k = static_cast<ListMetaSolution<SequenceMetaSolution>*>(best_sol)->get_meta_solutions_size();
+        //     if ((current_general_score < best_general_score ) || ((current_general_score == best_general_score ) && current_k < best_k)) { //we want to prefer smaller solutions in case of equal score 
+        //         best_general_score = current_general_score;
+        //         best_k =  current_k;
+        //         delete sjseq_simple_solution; //clean up previous solution
+        //         sjseq_simple_solution = new ListMetaSolution<SequenceMetaSolution>(*best_sol); //copy current solution
+        //     }
+        //     delete greedyTrainInstance; //clean up subsplit instances
+        //     delete greedyTestInstance;
+        // }
+        // std::cout << "SJSEQ simple size :" << (dynamic_cast<ListMetaSolution<SequenceMetaSolution>*>(sjseq_simple_solution))->get_meta_solutions_size()<<std::endl; 
+        // std::cout<< "SJSEQ simple training score : " << used_policy.evaluate_meta(*sjseq_simple_solution,*trainInstance) << std::endl;                 
+        // std::cout<< "SJSEQ simple testing score : " << used_policy.evaluate_meta(*sjseq_simple_solution,*testInstance) << std::endl; 
+        // std::cout<< "SJSEQ simple testing 90q : " << sjseq_simple_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
+        // std::cout<< "SJSEQ simple testing scenario scores : " << vec_to_string(sjseq_simple_solution->get_scores(used_policy,*testInstance)) << std::endl; 
 
 
         //for following steps, keep only front of best_of sjseq algo, up to a limit of sequences (There is already a cap of |S| sequences but We would like something smaller)
@@ -464,46 +464,46 @@ int main(int argc, char* argv[]) {
         // std::cout<<"SGSEQTEST testing score : " << used_policy.evaluate_meta(*sgseq_test_solution,*testInstance) << std::endl; 
         // std::cout<<"SGSEQTEST scenario scores : " << vec_to_string(sgseq_test_solution->get_scores(used_policy,*testInstance)) << std::endl; 
 
-        subsplit_number = 5; // copy of SJSEQ version. Could use template instead
-        best_general_score = INT_MAX; 
-        best_k = (int)trainInstance->getS();
-        for (int i = 0; i< subsplit_number; i++){
-            //split train instance 50/50 randomly
-            DataInstance *greedyTrainInstance, *greedyTestInstance;
-            std::tie(greedyTrainInstance, greedyTestInstance) = trainInstance->SampleSplitScenarios(trainInstance->getS()/2, rng, true); //use_clusters = Is it necessary?
-            //2. For each subspllit, find best k for greedy procedure.
-            bestk_greedy_group.set_initial_solution(*clean_sgseq_solution);//start with bestof solution front
-            int subsplit_best_score = used_policy.evaluate_meta(*clean_sgseq_solution, *greedyTestInstance);
-            best_sol = new ListMetaSolution<GroupMetaSolution>(*clean_sgseq_solution); //copy init solution
-            for (int k = (int)(trainInstance->getS()/2); k > 1; k--) {//iterate on smaller and smaller k
-                bestk_greedy_group.set_k(k); 
-                sgseq_greedy_solution = bestk_greedy_group.solve(*greedyTrainInstance); //find best training subset of solution
-                int current_score = used_policy.evaluate_meta(*sgseq_greedy_solution, *greedyTestInstance); //evaluate on test split 
-                if (current_score <= subsplit_best_score) { //prefering smaller k 
-                    subsplit_best_score = current_score;
-                    delete best_sol; //clean up previous solution
-                    best_sol = new ListMetaSolution<GroupMetaSolution>(*sgseq_greedy_solution); //copy current solution
-                }
-                if (k != (int)(trainInstance->getS()/2)) {delete bestk_greedy_group.initial_solution;} //cleaning up the solution created for greedy (not first one cause we'll use it later for sure)
-                bestk_greedy_group.set_initial_solution(*sgseq_greedy_solution);//next step goes faster to start from current solution.
-            }
-            //4. If it's better on trainInstance than previous best, update, if equal score and smaller, update
-            int current_general_score = used_policy.evaluate_meta(*best_sol, *trainInstance);
-            int current_k = static_cast<ListMetaSolution<GroupMetaSolution>*>(best_sol)->get_meta_solutions_size();
-            if ((current_general_score < best_general_score ) || ((current_general_score == best_general_score ) && current_k < best_k)) { //we want to prefer smaller solutions in case of equal score 
-                best_general_score = current_general_score;
-                best_k =  current_k;
-                delete sgseq_simple_solution; //clean up previous solution
-                sgseq_simple_solution = new ListMetaSolution<GroupMetaSolution>(*best_sol); //copy current solution
-            }
-            delete greedyTrainInstance; //clean up subsplit instances
-            delete greedyTestInstance;
-        }
-        std::cout << "SGSEQ simple size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_simple_solution))->get_meta_solutions_size()<<std::endl; 
-        std::cout<< "SGSEQ simple training score : " << used_policy.evaluate_meta(*sgseq_simple_solution,*trainInstance) << std::endl;                 
-        std::cout<< "SGSEQ simple testing score : " << used_policy.evaluate_meta(*sgseq_simple_solution,*testInstance) << std::endl; 
-        std::cout<< "SGSEQ simple testing 90q : " << sgseq_simple_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
-        std::cout<< "SGSEQ simple testing scenario scores : " << vec_to_string(sgseq_simple_solution->get_scores(used_policy,*testInstance)) << std::endl; 
+        // subsplit_number = 5; // copy of SJSEQ version. Could use template instead
+        // best_general_score = INT_MAX; 
+        // best_k = (int)trainInstance->getS();
+        // for (int i = 0; i< subsplit_number; i++){
+        //     //split train instance 50/50 randomly
+        //     DataInstance *greedyTrainInstance, *greedyTestInstance;
+        //     std::tie(greedyTrainInstance, greedyTestInstance) = trainInstance->SampleSplitScenarios(trainInstance->getS()/2, rng, true); //use_clusters = Is it necessary?
+        //     //2. For each subspllit, find best k for greedy procedure.
+        //     bestk_greedy_group.set_initial_solution(*clean_sgseq_solution);//start with bestof solution front
+        //     int subsplit_best_score = used_policy.evaluate_meta(*clean_sgseq_solution, *greedyTestInstance);
+        //     best_sol = new ListMetaSolution<GroupMetaSolution>(*clean_sgseq_solution); //copy init solution
+        //     for (int k = (int)(trainInstance->getS()/2); k > 1; k--) {//iterate on smaller and smaller k
+        //         bestk_greedy_group.set_k(k); 
+        //         sgseq_greedy_solution = bestk_greedy_group.solve(*greedyTrainInstance); //find best training subset of solution
+        //         int current_score = used_policy.evaluate_meta(*sgseq_greedy_solution, *greedyTestInstance); //evaluate on test split 
+        //         if (current_score <= subsplit_best_score) { //prefering smaller k 
+        //             subsplit_best_score = current_score;
+        //             delete best_sol; //clean up previous solution
+        //             best_sol = new ListMetaSolution<GroupMetaSolution>(*sgseq_greedy_solution); //copy current solution
+        //         }
+        //         if (k != (int)(trainInstance->getS()/2)) {delete bestk_greedy_group.initial_solution;} //cleaning up the solution created for greedy (not first one cause we'll use it later for sure)
+        //         bestk_greedy_group.set_initial_solution(*sgseq_greedy_solution);//next step goes faster to start from current solution.
+        //     }
+        //     //4. If it's better on trainInstance than previous best, update, if equal score and smaller, update
+        //     int current_general_score = used_policy.evaluate_meta(*best_sol, *trainInstance);
+        //     int current_k = static_cast<ListMetaSolution<GroupMetaSolution>*>(best_sol)->get_meta_solutions_size();
+        //     if ((current_general_score < best_general_score ) || ((current_general_score == best_general_score ) && current_k < best_k)) { //we want to prefer smaller solutions in case of equal score 
+        //         best_general_score = current_general_score;
+        //         best_k =  current_k;
+        //         delete sgseq_simple_solution; //clean up previous solution
+        //         sgseq_simple_solution = new ListMetaSolution<GroupMetaSolution>(*best_sol); //copy current solution
+        //     }
+        //     delete greedyTrainInstance; //clean up subsplit instances
+        //     delete greedyTestInstance;
+        // }
+        // std::cout << "SGSEQ simple size :" << (dynamic_cast<ListMetaSolution<GroupMetaSolution>*>(sgseq_simple_solution))->get_meta_solutions_size()<<std::endl; 
+        // std::cout<< "SGSEQ simple training score : " << used_policy.evaluate_meta(*sgseq_simple_solution,*trainInstance) << std::endl;                 
+        // std::cout<< "SGSEQ simple testing score : " << used_policy.evaluate_meta(*sgseq_simple_solution,*testInstance) << std::endl; 
+        // std::cout<< "SGSEQ simple testing 90q : " << sgseq_simple_solution->get_quantile(0.9, used_policy,*testInstance) << std::endl; 
+        // std::cout<< "SGSEQ simple testing scenario scores : " << vec_to_string(sgseq_simple_solution->get_scores(used_policy,*testInstance)) << std::endl; 
 
 
         
