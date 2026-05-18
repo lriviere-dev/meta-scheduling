@@ -2,8 +2,9 @@
 #define METASOLUTIONS_H
 
 #include "Sequence.h"
-#include "Policy.h"
+// #include "Policy.h"
 #include <vector>
+#include <memory>
 #include <iostream>
 #include <unordered_map>
 #include <algorithm>
@@ -15,6 +16,8 @@ class MetaSolution {
 public:
     virtual ~MetaSolution() {}
     virtual void print() const = 0;
+    virtual MetaSolution* clone() const = 0; // Polymorphic cloning method
+    virtual bool equals(const MetaSolution& other) const = 0; 
 
     //following attributes save scores and sequences for efficiency purposes. Note that ultimately, they depend on a policy, which is ssumed to be unique here.
     std::vector<Sequence> front_sequences; // front of the metasolution : the sequence expressed for each scenario
@@ -82,6 +85,12 @@ public:
     GroupMetaSolution(std::vector<std::vector<int>>& taskGroups)
         : taskGroups(taskGroups) {}
 
+    MetaSolution* clone() const override {
+        return new GroupMetaSolution(*this);//uses implicit copy constructor
+    }
+    bool equals(const MetaSolution& other) const override {
+        return *this == other;
+    }
 
      //operator to check groupSolution equality, could be faster if groups were sorted by default 
     bool operator==(const GroupMetaSolution& other) const {
@@ -226,6 +235,13 @@ public:
 
     SequenceMetaSolution(const std::vector<int>& taskSequence) //alternative definition of a sequence using raw vector (not recommended)
         : taskSequence(Sequence(taskSequence)) {}
+
+    MetaSolution* clone() const override {
+        return new SequenceMetaSolution(*this);
+    }
+    bool equals(const MetaSolution& other) const override {
+        return *this == other;
+    }
 
     GroupMetaSolution* to_gseq(){
         std::vector<int> raw_seq = this->get_sequence().get_tasks();

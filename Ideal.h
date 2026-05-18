@@ -23,6 +23,22 @@ public:
             }
         }
 
+    MetaSolution* clone() const override {
+        return new IdealMetaSolution(*this);
+    }
+    bool equals(const MetaSolution& other) const override {
+        return *this == other;
+    }
+
+    bool operator==(const MetaSolution& other) const {
+        const IdealMetaSolution* o = dynamic_cast<const IdealMetaSolution*>(&other);
+        if (!o) return false;
+        if (sequences.size() != o->sequences.size()) return false;
+        for (size_t i = 0; i < sequences.size(); ++i)
+            if (sequences[i].get_tasks() != o->sequences[i].get_tasks()) return false;
+        return true;
+    }
+
     Sequence get_sequence(int scenario){
         return sequences[scenario];
     }
