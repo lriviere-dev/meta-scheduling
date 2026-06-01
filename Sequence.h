@@ -37,7 +37,7 @@ public:
 
     std::vector<Sequence> neighbours(int neighborhood_size);
 
-    Sequence gen_swap_neighbor(int swap_index);
+    Sequence gen_swap_neighbor(int swap_index) const;
 
 private:
     std::vector<int> tasks; // Stores the sequence of tasks

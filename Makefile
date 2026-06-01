@@ -8,8 +8,9 @@ CFLAGS = -std=c++17 -DIL_STD -I$(CPOHOME)/cpoptimizer/include -I$(CONCERTDIR)/in
 LDFLAGS = -L$(CPOHOME)/cpoptimizer/lib/x86-64_linux/static_pic -lcp -L$(CPLEXDIR)/lib/x86-64_linux/static_pic -lcplex -L$(CONCERTDIR)/lib/x86-64_linux/static_pic -lconcert -lpthread -lm -ldl
 
 # SOURCES = $(wildcard *.cpp)  # Automatically find all .cpp files in the current directory    
-SOURCES = $(filter-out GenericGA.cpp instanceGenerator.cpp test_instance.cpp RCPSPInstanceGen.cpp, $(wildcard *.cpp))
+SOURCES = $(filter-out GAmain.cpp instanceGenerator.cpp test_instance.cpp RCPSPInstanceGen.cpp, $(wildcard *.cpp))
 OBJECTS = $(SOURCES:.cpp=.o) # Convert .cpp filenames to .o filenames
+GA_OBJECTS = $(filter-out main.o, $(OBJECTS))
 
 
 all: program
@@ -17,6 +18,9 @@ all: program
 program: $(OBJECTS)
 	$(CCC) -o $@ $(OBJECTS) $(LDFLAGS)
 
+
+GAmain: GAmain.o $(GA_OBJECTS)
+	$(CCC) -o $@ $^ $(LDFLAGS)
 
 %.o: %.cpp
 	$(CCC) -c $(CFLAGS) $< -o $@
@@ -26,4 +30,4 @@ program: $(OBJECTS)
 	$(CCC) -o $@ $< $(LDFLAGS) #compiles the target file
 
 clean:
-	rm -f *.o *.key *.sh program GenericGA test_instance instanceGenerator
+	rm -f *.o *.key *.sh program GAmain test_instance instanceGenerator

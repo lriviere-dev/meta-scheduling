@@ -75,7 +75,7 @@ Sequence Sequence::fix_precedence_constraints(const DataInstance& instance) cons
 }
 
 
-Sequence Sequence::gen_swap_neighbor(int swap_index){
+Sequence Sequence::gen_swap_neighbor(int swap_index) const{
     std::vector<int> swaped = this->get_tasks(); 
     if (swap_index > swaped.size()-2) {
     throw std::runtime_error("swap index out of bounds");

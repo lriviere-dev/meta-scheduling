@@ -563,6 +563,8 @@ private:
 
 };
 
+
+//TODO : generalilze to other metasolution types (use neighborhood virtual method)
 class SwapDescent : public SecondStageAlgorithm{
 public:
     SwapDescent(Policy* policy) {

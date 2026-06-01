@@ -89,6 +89,7 @@ public:
         return *this;
     }
 
+
     // Move constructor and assignment — free, unique_ptr handles it
     ListMetaSolution(ListMetaSolution&&) = default;
     ListMetaSolution& operator=(ListMetaSolution&&) = default;
@@ -114,6 +115,26 @@ public:
         return static_cast<int>(metaSolutions.size());
     }
 
+    std::unique_ptr<MetaSolution> mutate(const DataInstance& instance, std::mt19937& rng) const override
+    {
+        if (metaSolutions.empty()) return nullptr;
+
+        // Clone the whole list — evaluation data included
+        auto mutated = std::unique_ptr<ListMetaSolution>(this->clone());
+
+        // Pick a random member and mutate it
+        std::uniform_int_distribution<size_t> dist(0, metaSolutions.size() - 1);
+        size_t idx = dist(rng);
+        auto candidate = mutated->metaSolutions[idx]->mutate(instance, rng);
+        if (!candidate) return nullptr;
+
+        // Replace member and reset evaluation
+        mutated->metaSolutions[idx] = std::move(candidate);
+        mutated->reset_evaluation();
+
+        return mutated;
+    }
+    
     // Clones sol and takes ownership of the copy
     void add_meta_solution(const MetaSolution& sol) override {
         metaSolutions.push_back(std::unique_ptr<MetaSolution>(sol.clone()));

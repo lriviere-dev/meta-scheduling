@@ -51,6 +51,12 @@ public:
         return instance.getS();
     }
 
+    std::unique_ptr<MetaSolution> mutate(
+        const DataInstance& instance, std::mt19937& rng) const override
+    {
+        return nullptr; // IdealMetaSolution is a bound, not evolved
+    }
+    
     void print() const override{
         if (sequences.size()>=25) {std::cout << "Troncating output (too large)\n";}
         for (size_t i = 0; i < std::min(static_cast<size_t>(25), sequences.size()); ++i) {
