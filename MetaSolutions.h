@@ -18,6 +18,7 @@ public:
     virtual void print() const = 0;
     virtual MetaSolution* clone() const = 0; // Polymorphic cloning method
     virtual bool equals(const MetaSolution& other) const = 0; 
+    virtual std::unique_ptr<MetaSolution> mutate(const DataInstance& instance, std::mt19937& rng) const = 0;
 
     //following attributes save scores and sequences for efficiency purposes. Note that ultimately, they depend on a policy, which is ssumed to be unique here.
     std::vector<Sequence> front_sequences; // front of the metasolution : the sequence expressed for each scenario
@@ -143,6 +144,17 @@ public:
         return (new GroupMetaSolution(merged_groups));    
         }
 
+    std::unique_ptr<MetaSolution> mutate(const DataInstance& instance, std::mt19937& rng) const override
+    {
+        int nb = nb_groups();
+        if (nb < 2) return nullptr;
+    
+        std::uniform_int_distribution<int> dist(0, nb - 2); //pick a random group to merge with the next one (except the last one which has no next)
+        int merge_index = dist(rng);
+        return std::unique_ptr<MetaSolution>(merge_groups(merge_index));
+    }
+
+
     int nb_groups() const {
         return taskGroups.size();
     }
@@ -253,6 +265,25 @@ public:
 
         return new GroupMetaSolution(vectorgroup);
     }
+
+    // Picks a random valid swap neighbor.
+    std::unique_ptr<MetaSolution> mutate( const DataInstance& instance, std::mt19937& rng) const override
+    {
+        int n = instance.getN();
+        if (n < 2) return nullptr;
+        int attempts = 0;
+        // assume precedence constranits are not too tight
+        while (attempts++ < n * n) {            
+            int swap_index = std::uniform_int_distribution<int>(0, n - 2)(rng);
+            Sequence swapped = taskSequence.gen_swap_neighbor(swap_index);
+            if (swapped.check_precedence_constraints(instance)) {
+                return std::make_unique<SequenceMetaSolution>(swapped);
+            }
+        }
+        return nullptr; // give up 
+    }
+
+
     SequenceMetaSolution* gen_swap_neighbor(int swap_index, const DataInstance& instance){
         Sequence seq =  this->get_sequence();
         Sequence swaped =  seq.gen_swap_neighbor(swap_index);
@@ -276,6 +307,7 @@ public:
         }
         return output;
     }
+
     void print() const override{
         taskSequence.print();
     }
